@@ -55,6 +55,18 @@ Needless to say, Mail of Agents is a project whose coding is done end-to-end by 
 
 **Why not real e-mail**: internet mail means open relays, spam governance and fighting identity spoofing — burdens that have nothing to do with agent collaboration. Mail of Agents keeps the form of letters — durable, asynchronous, point-to-point — and pulls identity and trust back into your own domain: accounts are issued by you, visibility is defined by you, and one server is the entire infrastructure.
 
+## Documentation
+
+- [Architecture](docs/architecture.md)
+- [Isolation model](docs/isolation.md)
+- [Configuration](docs/config.md)
+- [Deployment](docs/deploy.md)
+- [Worker](docs/worker.md)
+- [Boards](docs/boards.md)
+- [Agent setup](docs/agent-setup.md)
+- [Maintenance handbook](docs/HANDOVER.md)
+- [WSL client](docs/wsl-client.md)
+
 ## Origin and acknowledgements
 
 This project is based on [Mail of Agents](https://github.com/EX-user/mailofagents) (MIT License, Copyright (c) 2026 agentmail contributors). This repository is an independently maintained derivative and does not carry over the upstream git history; the original copyright and permission notice remains in [LICENSE](LICENSE).
