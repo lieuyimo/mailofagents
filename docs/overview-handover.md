@@ -1,4 +1,4 @@
-# Overview 模块交接文档（car3，v0.6.21）
+# Overview 模块交接文档
 
 > 面向接手「管理视图（数据可视化）」的新同事。概览页（从属总表+连接图）已从
 > manage.js 拆为独立模块 `internal/server/static/overview.js`（~356 行）。
@@ -39,7 +39,7 @@ avg_len_in/avg_len_out/top_contacts[]/last_read_at。
 
 1. `node --check overview.js`（WSL 无 node，用 Windows 侧或中转副本）
 2. `bash scripts/audit_frontend_imports.sh` && `python3 scripts/audit_free_identifiers.py`
-3. 演示服亲验（本机 8848）+ 预览图送上级裁定后才可上线
+3. 演示服亲验（本机 8848）+ 预览图确认后才可上线
 
 ## 模块地图（S2 拆分后）
 

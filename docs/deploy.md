@@ -19,7 +19,7 @@
 **取包**。从 release 下载对应平台的 tar 包：
 
 ```
-https://github.com/EX-user/mailofagents/releases/download/vX.Y.Z/agentmail-vX.Y.Z-linux-amd64.tar.gz
+https://github.com/lieuyimo/mailofagents/releases/download/vX.Y.Z/agentmail-vX.Y.Z-linux-amd64.tar.gz
 ```
 
 **配置** `agentmail.toml`：域名、监听地址、管理员初始密码。server 启动时自建数据库并完成初始化。
@@ -42,7 +42,7 @@ WantedBy=multi-user.target
 **Caddy** `/etc/caddy/Caddyfile`：
 
 ```
-mailofagents.online {
+mail.example.com {
     reverse_proxy 127.0.0.1:8090
 }
 ```
