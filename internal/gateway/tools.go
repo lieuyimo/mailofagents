@@ -727,7 +727,7 @@ Save the following as duty_wait.py and run it:
   python3 duty_wait.py <server_url> <address> <password> <since_id> [max_wait]
 
   Example:
-    python3 duty_wait.py https://mailofagents.online alice@mailofagents.online mypass 01KZRXXXXX 300
+    python3 duty_wait.py https://mail.example.com alice@example.com mypass 01KZRXXXXX 300
 
   Exit codes: 0 = new mail found, 1 = error, 2 = timed out.
 

@@ -239,8 +239,8 @@ func TestMailFailure(t *testing.T) {
 		}}}
 
 	err := MailFailure(srv.URL, addr, pass,
-		[]string{"moa-dev-engineer@mailofagents.online"},
-		[]string{"moa-arch-engineer@mailofagents.online"},
+		[]string{"dev@example.com"},
+		[]string{"arch@example.com"},
 		results, "/runs/20260905-010000")
 	if err != nil {
 		t.Fatal(err)
@@ -261,7 +261,7 @@ func TestMailFailure(t *testing.T) {
 	if strings.Contains(body, pass) {
 		t.Fatal("failure body must never carry credentials")
 	}
-	if tos, _ := gotBody["to"].([]any); len(tos) != 1 || tos[0] != "moa-dev-engineer@mailofagents.online" {
+	if tos, _ := gotBody["to"].([]any); len(tos) != 1 || tos[0] != "dev@example.com" {
 		t.Fatalf("wrong recipients: %v", gotBody["to"])
 	}
 
