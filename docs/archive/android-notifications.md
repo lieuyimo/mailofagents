@@ -1,5 +1,8 @@
 # App 端消息通知 · 裁撤存档
 
+> **独立维护版说明**：Android 壳（TWA）打包件已从本仓库移除。浏览器 Web Push
+> 的服务端代码仍在；VAPID 未配置时 `/api/push/*` 保持 404。
+
 > **状态：已裁撤（2026-08-29）。** 本文档所述 Web Push 路线（Service Worker +
 > VAPID + push subscription）已废弃：验收真机为 WebView fallback 类 ROM，
 > `PushManager` 不存在，路线未在验收机型完成最小原型验证即立项，属流程教训。

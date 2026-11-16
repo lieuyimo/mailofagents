@@ -9,7 +9,7 @@ import (
 	bolt "go.etcd.io/bbolt"
 )
 
-// Push subscriptions (v0.6.30 app notifications, docs/push/DESIGN.md).
+// Push subscriptions (v0.6.30 app notifications, docs/archive/android-notifications.md).
 // Each record binds a Web Push endpoint to the account that created it —
 // ownership is enforced at creation time (the request must carry that
 // account's credential), so a subscription can never outlive or escape its
