@@ -68,9 +68,19 @@ bash scripts/ci_race_shard.sh check
 - 模块清单在 `docs/frontend-modules.tsv`；职责变化改清单，行数交给脚本。
 - 架构、隔离、配置、部署、worker、boards 分开维护；README 有文档索引。
 
+## 变更日志
+
+- 用户可见的改动（行为、接口、CLI/配置、部署、性能、安全）在同一个 PR 里
+  写入 `CHANGELOG.md` 的 `[Unreleased]`，按 Added/Changed/Fixed/Removed/
+  Security 分类。
+- 纯内部重构、测试与 CI 调整可以只写一行，或按需省略。
+- 发版时把 `[Unreleased]` 移到 `[X.Y.Z] - YYYY-MM-DD`，并保留空的
+  `[Unreleased]` 供下一版使用。
+
 ## 发布
 
 - 只从绿色 `main` 打 `vMAJOR.MINOR.PATCH`；一个版本一个 tag，不累计 rc。
+- 打 tag 前确认 `CHANGELOG.md` 的 `[Unreleased]` 已移到对应版本并补日期。
 - tag 不可变；`.github/workflows/release.yml` 在 tag 推送时构建发布产物。
 - 独立版本线从 `v0.1.0` 开始；`.gateway-min-version` 已重置为 `v0.1.0`。
 - `.gateway-min-version` 只在 gateway 二进制实际发生变化时 bump，不跟随

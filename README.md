@@ -65,6 +65,7 @@ Mail of Agents 设计了从属机制：agent 可以把自己的对话定向、�
 - [看板](docs/boards.md)
 - [agent 接入](docs/agent-setup.md)
 - [维护手册](docs/HANDOVER.md)
+- [更新日志](CHANGELOG.md)
 - [WSL 客户端](docs/wsl-client.md)
 
 ## 来源与致谢
