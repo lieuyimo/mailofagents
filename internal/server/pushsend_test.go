@@ -22,7 +22,34 @@ type capturedPush struct {
 	payload  pushPayload
 }
 
-func newPushSendTestServer(t *testing.T) (*Server, *store.Store, *[]capturedPush) {
+// capturedPushes is the goroutine-safe collector for delivered pushes: the
+// server delivers on timer goroutines while the test polls. Every access must
+// go through the methods — reading the slice directly reintroduces a data
+// race (caught by CI's -race job).
+type capturedPushes struct {
+	mu   sync.Mutex
+	list []capturedPush
+}
+
+func (c *capturedPushes) add(p capturedPush) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.list = append(c.list, p)
+}
+
+func (c *capturedPushes) count() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return len(c.list)
+}
+
+func (c *capturedPushes) snapshot() []capturedPush {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return append([]capturedPush(nil), c.list...)
+}
+
+func newPushSendTestServer(t *testing.T) (*Server, *store.Store, *capturedPushes) {
 	t.Helper()
 	st, err := store.Open(filepath.Join(t.TempDir(), "test.db"))
 	if err != nil {
@@ -43,12 +70,9 @@ func newPushSendTestServer(t *testing.T) (*Server, *store.Store, *[]capturedPush
 	cfg.Push.VAPIDPublicKey = "BPub"
 	cfg.Push.VAPIDPrivateKey = "Priv"
 	srv := New(st, a, cfg)
-	var mu sync.Mutex
-	captured := &[]capturedPush{}
+	captured := &capturedPushes{}
 	srv.sendPush = func(sub *store.PushSubscription, pub, priv, subject string, p pushPayload) (bool, error) {
-		mu.Lock()
-		*captured = append(*captured, capturedPush{endpoint: sub.Endpoint, payload: p})
-		mu.Unlock()
+		captured.add(capturedPush{endpoint: sub.Endpoint, payload: p})
 		return true, nil
 	}
 	return srv, st, captured
@@ -67,7 +91,7 @@ func TestPushDeliveryAggregateAndDND(t *testing.T) {
 	// Normal arrivals (inside the aggregation window).
 	srv.notifyDelivery("Teammate A", []string{addr})
 	srv.notifyDelivery("Teammate B", []string{addr})
-	if got := len(func() []capturedPush { return *captured }()); got != 0 {
+	if got := captured.count(); got != 0 {
 		t.Fatalf("push fired before window closed: %d", got)
 	}
 	time.Sleep(10 * time.Millisecond) // goroutine scheduling headroom
@@ -77,10 +101,9 @@ func TestPushDeliveryAggregateAndDND(t *testing.T) {
 	}
 	srv.pd.mu.Unlock()
 	waitFor(t, 2*time.Second, func() bool {
-		c := *captured
-		return len(c) == 1
+		return captured.count() == 1
 	})
-	got := (*captured)[0]
+	got := captured.snapshot()[0]
 	// Two arrivals collapsed into exactly one push; FromName is whichever
 	// arrival won the race, so only assert it is one of them.
 	if got.endpoint != "https://push/x" || got.payload.Digest != 0 {
@@ -104,7 +127,7 @@ func TestPushDeliveryAggregateAndDND(t *testing.T) {
 	}
 	srv.notifyDelivery("Quiet Sender", []string{addr})
 	time.Sleep(50 * time.Millisecond)
-	if n := len(*captured); n != 1 {
+	if n := captured.count(); n != 1 {
 		t.Fatalf("DND did not silence delivery: %d pushes", n)
 	}
 	// Close the window manually (as time would) and check the summary.
@@ -113,10 +136,9 @@ func TestPushDeliveryAggregateAndDND(t *testing.T) {
 	_ = d
 	srv.flushDigest(addr)
 	waitFor(t, 2*time.Second, func() bool {
-		c := *captured
-		return len(c) == 2
+		return captured.count() == 2
 	})
-	sum := (*captured)[1]
+	sum := captured.snapshot()[1]
 	if sum.payload.Digest == 0 {
 		t.Fatalf("expected digest summary push, got %+v", sum.payload)
 	}
