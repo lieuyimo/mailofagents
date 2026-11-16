@@ -51,8 +51,21 @@ type Server struct {
 	mu    sync.Mutex
 	codes map[string]*codeEntry // access_code plaintext -> entry
 
+	// now is the clock used for code TTLs. Tests replace it to avoid sleeps;
+	// production always uses time.Now.
+	now func() time.Time
+
 	in  *bufio.Reader
 	out io.Writer
+}
+
+// clock returns the server's time source, tolerating a zero-value Server
+// constructed directly in tests.
+func (s *Server) clock() time.Time {
+	if s.now != nil {
+		return s.now()
+	}
+	return time.Now()
 }
 
 // codeEntry is the in-memory record for one access code.
@@ -73,6 +86,7 @@ func New(baseURL string) *Server {
 		defaultURL: c.BaseURL(), // normalized (trailing slash trimmed)
 		clients:    map[string]*httpclient.Client{c.BaseURL(): c},
 		codes:      make(map[string]*codeEntry),
+		now:        time.Now,
 		in:         bufio.NewReader(os.Stdin),
 		out:        os.Stdout,
 	}
@@ -136,7 +150,7 @@ func (s *Server) issueCode(ctx context.Context, address, password, serverURL str
 		Address:   address,
 		Password:  password,
 		ServerURL: client.BaseURL(),
-		ExpiresAt: time.Now().Add(CodeTTL),
+		ExpiresAt: s.clock().Add(CodeTTL),
 		CallsUsed: 0,
 		MaxCalls:  CodeMaxCalls,
 	}
@@ -155,7 +169,7 @@ func (s *Server) consumeCode(code string) (*codeEntry, error) {
 	if !ok {
 		return nil, ErrInvalidCode
 	}
-	if time.Now().After(e.ExpiresAt) {
+	if s.clock().After(e.ExpiresAt) {
 		delete(s.codes, code)
 		return nil, ErrInvalidCode
 	}
@@ -177,7 +191,7 @@ func (s *Server) consumeCodeReadOnly(code string) (*codeEntry, error) {
 	if !ok {
 		return nil, ErrInvalidCode
 	}
-	if time.Now().After(e.ExpiresAt) {
+	if s.clock().After(e.ExpiresAt) {
 		delete(s.codes, code)
 		return nil, ErrInvalidCode
 	}
