@@ -46,6 +46,9 @@ jobs:
           bash scripts/audit_frontend_imports.sh
           python3 scripts/audit_free_identifiers.py
 
+      - name: Backend structure gate
+        run: go run ./cmd/audit-structure
+
   race:
     name: race (store + server)
     runs-on: ubuntu-latest
