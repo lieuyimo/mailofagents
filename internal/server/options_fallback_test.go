@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/agentmail/agentmail/internal/audit"
-	"github.com/agentmail/agentmail/internal/config"
-	"github.com/agentmail/agentmail/internal/store"
+	"github.com/lieuyimo/mailofagents/internal/audit"
+	"github.com/lieuyimo/mailofagents/internal/config"
+	"github.com/lieuyimo/mailofagents/internal/store"
 )
 
 // Gate probes for 0.2.4 (weber triage ②③, Devi plan adopted by alice):

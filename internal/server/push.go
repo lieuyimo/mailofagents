@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/agentmail/agentmail/internal/audit"
-	"github.com/agentmail/agentmail/internal/store"
+	"github.com/lieuyimo/mailofagents/internal/audit"
+	"github.com/lieuyimo/mailofagents/internal/store"
 )
 
 // Web Push subscription endpoints (v0.6.30 app notifications,

@@ -21,10 +21,10 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/agentmail/agentmail/internal/audit"
-	"github.com/agentmail/agentmail/internal/config"
-	"github.com/agentmail/agentmail/internal/server"
-	"github.com/agentmail/agentmail/internal/store"
+	"github.com/lieuyimo/mailofagents/internal/audit"
+	"github.com/lieuyimo/mailofagents/internal/config"
+	"github.com/lieuyimo/mailofagents/internal/server"
+	"github.com/lieuyimo/mailofagents/internal/store"
 )
 
 func main() {

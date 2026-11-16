@@ -6,8 +6,7 @@
 
 ## 仓库与模块
 
-- Go module 仍是 `github.com/agentmail/agentmail`（为兼容保留；仓库名是
-  `lieuyimo/mailofagents`）。
+- Go module 是 `github.com/lieuyimo/mailofagents`，与仓库地址一致。
 - 三个二进制：`agentmail-server`、`agentmail-gateway`、`agentmail-worker`。
 - 数据是单个 bbolt 文件；前端零构建 ES module，内嵌在 server 二进制里。
 - `main` 始终保持绿色；改动走分支 + PR + rebase 合并。

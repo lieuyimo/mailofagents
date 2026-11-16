@@ -19,7 +19,7 @@ import (
 	"syscall"
 	"time"
 
-	worker "github.com/agentmail/agentmail/internal/worker"
+	worker "github.com/lieuyimo/mailofagents/internal/worker"
 )
 
 type boardAction = worker.BoardAction

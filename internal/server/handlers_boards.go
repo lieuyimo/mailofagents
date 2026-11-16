@@ -35,7 +35,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/agentmail/agentmail/internal/store"
+	"github.com/lieuyimo/mailofagents/internal/store"
 )
 
 // append rate limits, per minute (v1.2 point 6).

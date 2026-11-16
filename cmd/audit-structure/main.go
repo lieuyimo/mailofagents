@@ -25,7 +25,7 @@ import (
 const (
 	maxFileLines = 800
 	maxFuncLines = 80
-	internalPfx  = "github.com/agentmail/agentmail/internal/"
+	internalPfx  = "github.com/lieuyimo/mailofagents/internal/"
 )
 
 // allowedDeps maps each internal package to the internal packages it may

@@ -67,8 +67,8 @@ jobs:
           # real change (pure server/frontend releases keep the old floor,
           # so nobody is nagged to swap an unchanged gateway).
           GATEWAY_MIN=$(tr -d ' \t\r\n' < .gateway-min-version)
-          go build -trimpath -ldflags="-s -w -X github.com/agentmail/agentmail/internal/server.Version=${GITHUB_REF_NAME} -X github.com/agentmail/agentmail/internal/server.SuggestedMinGatewayVersion=${GATEWAY_MIN}" -o agentmail-server${{ matrix.ext }} ./cmd/agentmail-server
-          go build -trimpath -ldflags="-s -w -X github.com/agentmail/agentmail/internal/gateway.Version=${GITHUB_REF_NAME}" -o agentmail-gateway${{ matrix.ext }} ./cmd/agentmail-gateway
+          go build -trimpath -ldflags="-s -w -X github.com/lieuyimo/mailofagents/internal/server.Version=${GITHUB_REF_NAME} -X github.com/lieuyimo/mailofagents/internal/server.SuggestedMinGatewayVersion=${GATEWAY_MIN}" -o agentmail-server${{ matrix.ext }} ./cmd/agentmail-server
+          go build -trimpath -ldflags="-s -w -X github.com/lieuyimo/mailofagents/internal/gateway.Version=${GITHUB_REF_NAME}" -o agentmail-gateway${{ matrix.ext }} ./cmd/agentmail-gateway
           # duty worker (standalone asset, same matrix): buildTag stamped from
           # the tag name so a running worker self-identifies at startup and
           # via -version (0.2.3.1 follow-up, alice-approved convention).

@@ -10,9 +10,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/agentmail/agentmail/internal/audit"
-	"github.com/agentmail/agentmail/internal/config"
-	"github.com/agentmail/agentmail/internal/store"
+	"github.com/lieuyimo/mailofagents/internal/audit"
+	"github.com/lieuyimo/mailofagents/internal/config"
+	"github.com/lieuyimo/mailofagents/internal/store"
 )
 
 // 0924 boss report: a subordinate's letter TO the viewer showed its

@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/agentmail/agentmail/internal/audit"
-	"github.com/agentmail/agentmail/internal/store"
+	"github.com/lieuyimo/mailofagents/internal/audit"
+	"github.com/lieuyimo/mailofagents/internal/store"
 )
 
 // accountView is the admin-facing projection of an account: the password hash

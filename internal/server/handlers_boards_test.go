@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/agentmail/agentmail/internal/store"
+	"github.com/lieuyimo/mailofagents/internal/store"
 )
 
 // TestBoardCreateSeeding pins the optional header_row/content create-time

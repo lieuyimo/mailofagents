@@ -10,9 +10,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/agentmail/agentmail/internal/audit"
-	"github.com/agentmail/agentmail/internal/config"
-	"github.com/agentmail/agentmail/internal/store"
+	"github.com/lieuyimo/mailofagents/internal/audit"
+	"github.com/lieuyimo/mailofagents/internal/config"
+	"github.com/lieuyimo/mailofagents/internal/store"
 )
 
 // Attachment round-trip gate (0.2.4.1, P0 field report 2026-09-03):

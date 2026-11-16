@@ -3,7 +3,7 @@ package server
 import (
 	"golang.org/x/crypto/bcrypt"
 
-	"github.com/agentmail/agentmail/internal/store"
+	"github.com/lieuyimo/mailofagents/internal/store"
 )
 
 // testStoreOptions keeps password hashing cheap. Server tests make many

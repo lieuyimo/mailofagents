@@ -22,7 +22,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/agentmail/agentmail/internal/gateway"
+	"github.com/lieuyimo/mailofagents/internal/gateway"
 )
 
 func main() {

@@ -14,7 +14,7 @@ package server
 import (
 	"net/http"
 
-	"github.com/agentmail/agentmail/internal/store"
+	"github.com/lieuyimo/mailofagents/internal/store"
 )
 
 // defaultPushSeed is the first-period push copy, approved verbatim by boss

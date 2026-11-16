@@ -15,7 +15,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/agentmail/agentmail/internal/testbench"
+	"github.com/lieuyimo/mailofagents/internal/testbench"
 )
 
 func main() {

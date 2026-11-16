@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/agentmail/agentmail/internal/store"
+	"github.com/lieuyimo/mailofagents/internal/store"
 )
 
 // postLimit issues POST /api/account/limits authenticated as authAddr and

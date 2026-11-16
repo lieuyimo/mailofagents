@@ -1,4 +1,4 @@
-module github.com/agentmail/agentmail
+module github.com/lieuyimo/mailofagents
 
 go 1.24.2
 

@@ -11,7 +11,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/agentmail/agentmail/internal/httpclient"
+	"github.com/lieuyimo/mailofagents/internal/httpclient"
 )
 
 // Text-attachment limits for send_email inline_files.

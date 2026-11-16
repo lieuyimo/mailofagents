@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/agentmail/agentmail/internal/audit"
+	"github.com/lieuyimo/mailofagents/internal/audit"
 )
 
 // handleSearch serves the content-search endpoint shared by the inbox card
