@@ -10,7 +10,7 @@ import (
 )
 
 // Web Push subscription endpoints (v0.6.30 app notifications,
-// docs/push/DESIGN.md). Route A of the approved hybrid: standard Web Push
+// docs/archive/android-notifications.md). Route A of the approved hybrid: standard Web Push
 // carries the system notification; the WebView-fallback polling banner and
 // vendor channels live elsewhere. Security rulings enforced here:
 //
