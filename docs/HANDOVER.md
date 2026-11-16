@@ -80,7 +80,8 @@ bash scripts/ci_race_shard.sh check
 ## 发布
 
 - 只从绿色 `main` 打 `vMAJOR.MINOR.PATCH`；一个版本一个 tag，不累计 rc。
-- 打 tag 前确认 `CHANGELOG.md` 的 `[Unreleased]` 已移到对应版本并补日期。
+- 打 tag 前确认 `CHANGELOG.md` 已有对应 `## [X.Y.Z] - 日期` 段；
+  `release.yml` 会把它作为 release notes，缺失或为空则发布失败。
 - tag 不可变；`.github/workflows/release.yml` 在 tag 推送时构建发布产物。
 - 独立版本线从 `v0.1.0` 开始；`.gateway-min-version` 已重置为 `v0.1.0`。
 - `.gateway-min-version` 只在 gateway 二进制实际发生变化时 bump，不跟随
