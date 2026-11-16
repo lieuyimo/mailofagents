@@ -18,7 +18,7 @@ import (
 //  2. Unmatched /api/* paths answer a plain-text "not found" 404 — no Go
 //     default page on the API face.
 func TestOptionsRejectedAndAPIFallback404(t *testing.T) {
-	st, err := store.Open(t.TempDir() + "/test.db")
+	st, err := store.Open(t.TempDir()+"/test.db", testStoreOptions()...)
 	if err != nil {
 		t.Fatalf("open store: %v", err)
 	}

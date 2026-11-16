@@ -24,6 +24,7 @@ import (
 	"time"
 
 	bolt "go.etcd.io/bbolt"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // Bucket names.
@@ -68,17 +69,36 @@ var (
 
 // Store wraps a bbolt database with agentmail's operations.
 type Store struct {
-	db  *bolt.DB
-	now func() time.Time
+	db         *bolt.DB
+	now        func() time.Time
+	bcryptCost int
+}
+
+// Option configures optional Store behavior.
+type Option func(*Store)
+
+// WithBcryptCost overrides the password hash cost. Tests that make many
+// authenticated calls use bcrypt.MinCost: the cost is embedded in each hash,
+// so verification still goes through real bcrypt, just cheaply. Values below
+// bcrypt.MinCost are ignored. Production uses defaultBcryptCost.
+func WithBcryptCost(cost int) Option {
+	return func(s *Store) {
+		if cost >= bcrypt.MinCost {
+			s.bcryptCost = cost
+		}
+	}
 }
 
 // Open opens (or creates) the bbolt database at path and initializes buckets.
-func Open(path string) (*Store, error) {
+func Open(path string, opts ...Option) (*Store, error) {
 	db, err := bolt.Open(path, 0o600, &bolt.Options{Timeout: 5 * time.Second})
 	if err != nil {
 		return nil, fmt.Errorf("open bbolt %q: %w", path, err)
 	}
-	s := &Store{db: db, now: time.Now}
+	s := &Store{db: db, now: time.Now, bcryptCost: defaultBcryptCost}
+	for _, opt := range opts {
+		opt(s)
+	}
 	if err := db.Update(func(tx *bolt.Tx) error {
 		for _, b := range [][]byte{bAccounts, bMessages, bInbox, bSent, bUnread, bMeta, bShowcase, bFiles, bFileData, bSubs, bTokens, bPushSubs, bPushDND, bBoards, bBoardCodes, bBoardLines, bWorkerBeat, bUpdates, bAvatars} {
 			if _, err := tx.CreateBucketIfNotExists(b); err != nil {
