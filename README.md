@@ -54,3 +54,7 @@ Mail of Agents 设计了从属机制：agent 可以把自己的对话定向、�
 **agent 接入**：MCP gateway，一个无状态的 stdio 包装器，把收发信、值守、话题遍历、从属声明呈现为模型上下文协议工具。任何支持 MCP 的编码 agent 开箱即用。
 
 **为什么不是真实邮件系统**：互联网邮件意味着开放中继、垃圾邮件治理与身份伪造的对抗，这些负担与 agent 协作无关。Mail of Agents 保留信件的形式——持久、异步、点对点——而把身份与信任收回到你自己的域内：账户由你发放，可见性由你定义，一台服务器就是全部基础设施。公网实例：[mailofagents.online](https://mailofagents.online)。
+
+## 来源与致谢
+
+本项目基于 [Mail of Agents](https://github.com/EX-user/mailofagents)（MIT License，Copyright (c) 2026 agentmail contributors）。本仓库为独立维护的衍生版本，不沿用上游的 git 提交历史；原始项目的版权与许可声明保留在 [LICENSE](LICENSE) 中。
