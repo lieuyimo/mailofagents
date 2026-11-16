@@ -1,7 +1,13 @@
 name: ci
 
-# Tests on every push to main and every pull request. Release artifacts stay
-# tag-only in release.yml; this workflow never publishes anything.
+# Layered CI:
+#   - build/vet/test + structure gates on every push and PR (fast, ~1.5 min)
+#   - race matrix is opt-in on PRs (add the `run-race` label), runs nightly,
+#     and on manual dispatch; it does not repeat on main pushes already
+#     covered by the PR run.
+#
+# Release artifacts stay tag-only in release.yml; this workflow never
+# publishes anything.
 #
 # Like release.yml, we use the runner-preinstalled Go instead of
 # actions/setup-go: its codeload tarball download was persistently
@@ -11,7 +17,16 @@ on:
   push:
     branches: [main]
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
+  schedule:
+    # Nightly full race run (18:17 UTC).
+    - cron: "17 18 * * *"
   workflow_dispatch:
+    inputs:
+      run_race:
+        description: "Run the race matrix"
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -29,6 +44,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Cache Go build and module caches
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
       - name: Go toolchain (runner-preinstalled)
         run: go version
 
@@ -39,7 +64,7 @@ jobs:
         run: go vet ./...
 
       - name: Test
-        run: go test ./...
+        run: go test -count=1 ./...
 
       - name: Frontend structure gates
         run: |
@@ -55,10 +80,15 @@ jobs:
   race:
     name: race (${{ matrix.shard }})
     runs-on: ubuntu-latest
-    # One combined job spent ~9 min, almost all in server's real-time waits
-    # under -race. Split by feature (scripts/ci_race_shard.sh) so the shards
-    # run in parallel; the slowest shard is the critical path.
-    timeout-minutes: 30
+    # Opt-in on PRs via the `run-race` label; always on nightly/dispatch.
+    if: >-
+      github.event_name == 'schedule' ||
+      (github.event_name == 'workflow_dispatch' && inputs.run_race) ||
+      (github.event_name == 'pull_request' &&
+       contains(github.event.pull_request.labels.*.name, 'run-race'))
+    # Split by feature (scripts/ci_race_shard.sh); the slowest shard is the
+    # critical path. ~2.5 min after the board-quota test fix.
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -66,14 +96,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Cache Go build and module caches
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
       - name: Go toolchain (runner-preinstalled)
         run: go version
 
       - name: Race detector
         run: |
           if [ "${{ matrix.shard }}" = "store" ]; then
-            go test -race ./internal/store
+            go test -race -count=1 -timeout=15m ./internal/store
           else
             pattern=$(bash scripts/ci_race_shard.sh "${{ matrix.shard }}")
-            go test -race ./internal/server -run "$pattern"
+            go test -race -count=1 -timeout=15m ./internal/server -run "$pattern"
           fi
