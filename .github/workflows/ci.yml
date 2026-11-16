@@ -41,6 +41,11 @@ jobs:
       - name: Test
         run: go test ./...
 
+      - name: Frontend structure gates
+        run: |
+          bash scripts/audit_frontend_imports.sh
+          python3 scripts/audit_free_identifiers.py
+
   race:
     name: race (store + server)
     runs-on: ubuntu-latest
