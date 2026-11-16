@@ -1,0 +1,852 @@
+// agentmail overview domain — S2 car 3 of the zero-build ESM split
+// (superior directive: the Overview / connections-graph view moves out of
+// manage.js so a new colleague can own the data-visualization surface).
+// HARD CONSTRAINT (audit_frontend_imports.sh): imports ONLY ./core.js;
+// every cross-domain interaction goes through DOM CustomEvents:
+//   listens:  overview:entered {}  overview:refresh {}  overview:reset {}
+//             i18n:change
+//   emits:    nav:activate {tab:"accounts"}
+//             mgmt:browse-account {address, folder?}
+// The i18n dictionary stays a classic global (window.I18N).
+import { $, $$, esc, api, getSession, toast, fmtTime, basicAuth } from "./core.js";
+
+(function () {
+  "use strict";
+
+  function t(key, vars) {
+    return window.I18N ? window.I18N.t(key, vars) : key;
+  }
+
+  // ---- v0.6 mail management views ----
+  // Segment capsule switches between the Messages view (the existing dual
+  // pane, preserved verbatim) and the Subs Overview aggregate. The choice
+  // persists; overview lazy-loads on first entry and re-renders on language
+  // change. Rows deep-link into Messages with the account preselected.
+
+  // Liveness window prefs (strong/weak hours) live on the account profile —
+  // fetched once per login, same source of truth the manage module uses.
+  var overviewPrefs = null;
+  function ensureOverviewPrefs() {
+    if (overviewPrefs) return Promise.resolve(overviewPrefs);
+    return api("/api/profile/self", { keepSession: true }).then(function (p) {
+      overviewPrefs = (p && p.prefs) || p || {};
+      return overviewPrefs;
+    }, function () { return {}; });
+  }
+  function mgmtIsActive(s) {
+    // Three-tier liveness (superior's rule, v0.6): GREEN = mail traffic
+    // (send or receive) within the strong window; YELLOW = inbox read
+    // activity within the weak window but no traffic (script-like);
+    // GRAY = idle / never. Windows are user prefs (hours), defaults
+    // strong=24, weak=48.
+    var now = Date.now() / 1000;
+    var strongH = (overviewPrefs && overviewPrefs.livenessStrongHours) || 24;
+    var weakH = (overviewPrefs && overviewPrefs.livenessWeakHours) || 48;
+    var traffic = Math.max(s.last_in_at || 0, s.last_out_at || 0);
+    var read = s.last_read_at || 0;
+    if (traffic && now - traffic <= strongH * 3600) return "strong";
+    if (read && now - read <= weakH * 3600) return "weak";
+    if (!traffic && !read) return "never";
+    return "idle";
+  }
+
+  // 0.3.2 概览重构（boss 0924 认定）：链接页 = 连接图独占。从属表已并入
+  // 账户页（B 案列融合，宿主 app.js：胶囊+活动行+10s 轮询+进页即拉）；
+  // 图不跟 10s 活帧（boss 定）——进页拉一次静态呈示，60s 窗内重进只 fit
+  // 不重建（物理稳态沿用 1027/1034 冻结成果），超窗重拉。
+  function mgmtOverviewHtml(d) {
+    var subs = (d && d.subs) || [];
+    var box = "";
+    if (!subs.length) {
+      box += '<div class="mgmt-empty"><div>' + t("mgmt.emptyTitle") + '</div><div class="sub">' +
+        t("mgmt.emptySub") + '</div><button class="row-action" data-mgmt-go="accounts">' +
+        t("mgmt.goAccounts") + "</button></div>";
+    }
+
+    // Connections graph (superior: force-directed, N2 label blocks + A4
+    // volume-scaled wedges, shown on BOTH desktop and mobile, inside the
+    // Overview view). The container is rendered by renderMgmtGraph after
+    // this HTML lands in the DOM.
+    // Floating circular controls (superior request): the buttons sit ON the
+    // canvas, overlaid above the graph, outside the pan/zoom transform —
+    // a DOM layer on top of the vis-network canvas.
+    // 0.3 (boss v2, test-server feedback): play/export ALSO render in the
+    // title row as capsule pills on phones — same line as the 连接图 label,
+    // right-aligned. Two class-wired instances; CSS shows head pills on
+    // phones and canvas circles on PC. Download glyph ⬇ (⤓ read too thin).
+    // 1048i（boss 0924）：播放/下载回画布内圆钮（与线性/数字一致）；图头行整体移除——链接图与切卡胶囊之间无别的内容。
+    box += '<div id="mgmt-graph-wrap" class="mgmt-graph-wrap">' +
+      '<div class="mgmt-graph-controls overlay">' +
+      '<button type="button" class="gg-btn" id="gg-map" title="' + esc(t("mgmt.gMap")) + '"></button>' +
+      '<button type="button" class="gg-btn" id="gg-nums" title="' + esc(t("mgmt.gNums")) + '"></button>' +
+      '<button type="button" class="gg-btn gg-btn-days" id="gg-days"></button>' +
+      '<button type="button" class="gg-btn gg-canvas-btn gg-play" title="' + esc(t("mgmt.gPlay")) + '">' + esc(t("graph.play")) + '</button>' +
+      '<button type="button" class="gg-btn gg-canvas-btn gg-export" title="' + esc(t("mgmt.gExport")) + '">' + esc(t("graph.dl")) + '</button>' +
+      '</div>' +
+      '<div id="mgmt-graph" class="mgmt-graph is-stabilizing"></div>' +
+      '</div>';
+    return box;
+  }
+
+  // Graph display preferences (superior request): persisted so a reload
+  // keeps the chosen mapping / numbers / range.
+  var graphPrefs = { map: "linear", nums: true, days: 7 };
+  try {
+    var gp = JSON.parse(localStorage.getItem("mgmtGraphPrefs") || "{}");
+    if (gp.map === "log" || gp.map === "linear") graphPrefs.map = gp.map;
+    if (typeof gp.nums === "boolean") graphPrefs.nums = gp.nums;
+    // 上级 01M186FW6Y 续：时间档改 1d/7d/30d，不留全部历史档
+    if (gp.days === 1 || gp.days === 7 || gp.days === 30) graphPrefs.days = gp.days;
+  } catch (_) {}
+  function saveGraphPrefs() {
+    try { localStorage.setItem("mgmtGraphPrefs", JSON.stringify(graphPrefs)); } catch (_) {}
+  }
+  function windowLabel(days) { return days + "d"; }
+  function syncGraphControlLabels() {
+    // Circular on-canvas buttons stay terse (superior request): map shows
+    // the active mode, numbers a filled/hollow dot, range the window.
+    var b1 = $("#gg-map"), b2 = $("#gg-nums"), b3 = $("#gg-days");
+    if (b1) b1.textContent = graphPrefs.map === "log" ? t("mgmt.mapLog") : t("mgmt.mapLinear");
+    if (b2) { b2.textContent = t("mgmt.gNumsShort"); b2.classList.toggle("off", !graphPrefs.nums); }
+    if (b3) b3.textContent = graphPrefs.days + "d";
+  }
+
+  function shortAddr(a) {
+    return String(a || "").split("@")[0];
+  }
+
+  // Lazy-load the vendored vis-network (688KB) the first time the graph
+  // renders — the login page and other tabs never pay for it.
+  var visNetworkReady = null;
+  function loadVisNetwork() {
+    if (window.vis && window.vis.Network) return Promise.resolve();
+    if (visNetworkReady) return visNetworkReady;
+    visNetworkReady = new Promise(function (resolve, reject) {
+      var s = document.createElement("script");
+      s.src = "/static/vis-network.min.js";
+      s.onload = function () { resolve(); };
+      s.onerror = function () { visNetworkReady = null; reject(new Error("vis-network load failed")); };
+      document.head.appendChild(s);
+    });
+    return visNetworkReady;
+  }
+
+  // Live graph handle (v0.6.8): kept for re-fit on tab re-entry so the
+  // viewport stays centered on the nodes between visits.
+  var mgmtNetwork = null;
+  // Superior 01M186FW6Y: keep the edge DataSet + per-edge metadata so the
+  // linear/log (and numbers) toggles restyle IN PLACE — a full re-render
+  // re-ran physics and visibly jiggled the layout.
+  var mgmtEdgeSet = null, mgmtEdgeMeta = [], mgmtMaxCount = 1;
+var mgmtNodeSet = null;
+  function renderMgmtGraph(graph, subs) {
+    var el = $("#mgmt-graph");
+    if (!el) return;
+    var nodes = (graph && graph.nodes) || [];
+    var edges = (graph && graph.edges) || [];
+    mgmtNetwork = null; // fresh render invalidates the old instance
+    mgmtEdgeSet = null;
+    mgmtNodeSet = null;
+    playSeqCache = null; // 图数据重载→播放序列缓存失效
+    if (!nodes.length) { el.textContent = ""; return; }
+    var livenessByAddr = {};
+    (subs || []).forEach(function (s) { livenessByAddr[String(s.address).toLowerCase()] = mgmtIsActive(s); });
+    // 1032 (boss, real-data rerun): v0.2.9 方案一 restored — node mass maps
+    // outgoing volume; kind map drives the two-tier spring lengths.
+    var mgmtMaxVol = 1;
+    nodes.forEach(function (n) { mgmtMaxVol = Math.max(mgmtMaxVol, n.volume || 0); });
+    var kindByAddr = {};
+    nodes.forEach(function (n) { kindByAddr[String(n.address).toLowerCase()] = n.kind || "external"; });
+    var facesReady = (function () {
+      var myAddrLc = ((getSession() || {}).address || "").toLowerCase();
+      // 0.3.5 graph shape (boss 口径: 盒子里有个圆头像，未设置头像按账户页
+      // 同款机器人填充): the node face is a BAKED SVG in the box palette
+      // (ring/bg/kind colors, name + volume lines) with a circular avatar
+      // inset at the left - real avatar bytes when the payload carries
+      // avatar_hash, the deterministic robot otherwise (the same generator
+      // as every other avatar surface). Faces resolve BEFORE the network
+      // builds so they never flash-swap, and render at 1.6x to hold
+      // presence at fit-zoom. Layout physics (volume value/mass, spring
+      // tiers) are untouched - only the face changed.
+      var XML_MAP = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+      function escXml(s) {
+        return String(s || "").replace(/[&<>"']/g, function (ch) { return XML_MAP[ch]; });
+      }
+      var prep = nodes.map(function (n) {
+        var kind = n.kind || "external";
+        var isMe = kind === "self" || String(n.address || "").toLowerCase() === myAddrLc;
+        var st = livenessByAddr[String(n.address || "").toLowerCase()];
+        var border = isMe ? "#1d4ed8"
+          : kind === "sub" ? (st === "strong" ? "#2e9e5b" : st === "weak" ? "#d9a419" : "#9aa4b2")
+          : "#a7b1bd";
+        var bg = isMe ? "#dbeafe"
+          : kind === "sub" ? (st === "strong" ? "#dcf2e4" : st === "weak" ? "#f7edd4" : "#eceff3")
+          : "#f2f4f7";
+        return { n: n, kind: kind, isMe: isMe, border: border, bg: bg };
+      });
+      function nodeFace(pr) {
+        var n = pr.n, border = pr.border, bg = pr.bg;
+        var name = pr.isMe ? t("mgmt.meLabel") : shortAddr(n.address);
+        var sub2 = pr.kind !== "external" ? windowLabel(graphPrefs.days) + " " + (n.volume || 0) : "";
+        // face is drawn at 1.6x so it keeps presence at the graph's fit-zoom
+        var FS = 1.6, H = Math.round(46 * FS), pad = Math.round(10 * FS), avD = Math.round(32 * FS);
+        var avX = pad + 2, tx = avX + avD + Math.round(10 * FS);
+        var wName = name.length * 7.4 * FS + 4;
+        var wSub = sub2.length * 6.3 * FS + 4;
+        var W = Math.ceil(tx + Math.max(wName, wSub) + pad + 2);
+        var cid = "g" + Math.abs(String(n.address).split("").reduce(function (a, ch) { return (a * 31 + ch.charCodeAt(0)) | 0; }, 7));
+        return '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '">' +
+          '<rect x="1" y="1" width="' + (W - 2) + '" height="' + (H - 2) + '" rx="' + Math.round(7 * FS) + '" fill="' + bg + '" stroke="' + border + '" stroke-width="' + (pr.isMe ? 4 : 2.5) + '"/>' +
+          '<clipPath id="' + cid + '"><circle cx="' + (avX + avD / 2) + '" cy="' + H / 2 + '" r="' + avD / 2 + '"/></clipPath>' +
+          '<image x="' + avX + '" y="' + ((H - avD) / 2) + '" width="' + avD + '" height="' + avD + '" clip-path="url(#' + cid + ')" href="' + pr.uri + '"/>' +
+          '<circle cx="' + (avX + avD / 2) + '" cy="' + H / 2 + '" r="' + avD / 2 + '" fill="none" stroke="' + border + '" stroke-width="' + Math.round(1.5 * FS) + '"/>' +
+          '<text x="' + tx + '" y="' + Math.round(20 * FS) + '" font-family="ui-monospace, Consolas, monospace" font-size="' + Math.round(12 * FS) + '" font-weight="600" fill="#23303f">' + escXml(name) + '</text>' +
+          (sub2 ? '<text x="' + tx + '" y="' + Math.round(36 * FS) + '" font-family="ui-monospace, Consolas, monospace" font-size="' + Math.round(10.5 * FS) + '" fill="#5b6b7e">' + escXml(sub2) + '</text>' : "") +
+          '</svg>';
+      }
+      function faceUri(svg) { return "data:image/svg+xml;utf8," + encodeURIComponent(svg); }
+      return Promise.all(prep.map(function (pr) {
+        return new Promise(function (res) {
+          if (pr.n.avatar_hash && window.__avAvatarDataUri) {
+            window.__avAvatarDataUri(pr.n.address, pr.n.avatar_hash, function (u) {
+              res(u || (window.__avDataUri ? window.__avDataUri(pr.n.address) : ""));
+            });
+          } else {
+            res(window.__avDataUri ? window.__avDataUri(pr.n.address) : "");
+          }
+        });
+      })).then(function (uris) {
+        return {
+          faces: uris.map(function (u, ni) { return faceUri(nodeFace({ n: prep[ni].n, kind: prep[ni].kind, isMe: prep[ni].isMe, border: prep[ni].border, bg: prep[ni].bg, uri: u })); }),
+          prep: prep
+        };
+      });
+    })();
+    loadVisNetwork().then(function () {
+      var myAddr = ((getSession() || {}).address || "").toLowerCase();
+      facesReady.then(function (fr) {
+      var vn = new vis.DataSet(nodes.map(function (n, ni) {
+        var pr = fr.prep[ni];
+        return {
+          id: n.address, label: "",
+          shape: "image", image: fr.faces[ni],
+          size: (function () {
+            // 1037b→1037d (boss, staging 0930, four rounds): his [1,2] vs
+            // [0.5,1] framing = the whole band sits an octave too high —
+            // halve it, ratio unchanged. Band drops 22..44 → 11..22; "me"
+            // rides one notch above its volume twin (12..24).
+            var t = Math.sqrt(Math.min(1, (n.volume || 0) / (mgmtMaxVol || 1)));
+            // 1044 (boss, 1001): [0.5,1] -> [0.7,1.4] = the whole band x1.4,
+            // ratio untouched. Also swaps the graph to vis-network 9.x,
+            // whose main canvas is devicePixelRatio-aware (3.33 drew 1:1
+            // and blurred every glyph on hi-dpi screens).
+            return pr.isMe ? 16.8 + 16.8 * t : 15.4 + 15.4 * t;
+          })(),
+          borderWidth: 0,
+          // 1037 (boss, staging 0930): vis-network's default value-scaling
+          // (min10/max30 linear) stretched the spread ~3x (vol 31 vs 1) —
+          // value stays off; the tier above owns the size mapping now.
+          mass: 1 + 3 * Math.min(1, (n.volume || 0) / (mgmtMaxVol || 1)),
+          title: shortAddr(n.address) + (pr.kind !== "external" ? " · " + windowLabel(graphPrefs.days) + " " + (n.volume || 0) : ""),
+          _kind: pr.kind, _border: pr.border, _bg: pr.bg, avatar_hash: n.avatar_hash || ""
+        };
+      }));
+
+      var ve = [];
+      // Data-adaptive normalization: every scale is RELATIVE to the largest
+      // count in the current graph. Mapping mode is the floating button's
+      // choice: LINEAR (default) maps strength straight to width/alpha;
+      // LOG compresses contrast so a wide range stays readable.
+      var maxCount = 1;
+      mgmtEdgeMeta = [];
+      // 1040 (boss): sender capacity lookup — graph nodes carry the 30d
+      // outgoing volume; spring tiers key on count / sender volume.
+      var volByAddr = {};
+      nodes.forEach(function (n) {
+        volByAddr[String(n.address || "").toLowerCase()] = n.volume || 0;
+      });
+      edges.forEach(function (e) {
+        maxCount = Math.max(maxCount, e.a_to_b || 0, e.b_to_a || 0);
+      });
+      mgmtMaxCount = maxCount;
+      var logDen = Math.log(1 + maxCount);
+      function graphScale(count) {
+        var c = count || 0;
+        if (graphPrefs.map === "log") return Math.log(1 + c) / logDen;
+        return c / maxCount;
+      }
+      edges.forEach(function (e, ei) {
+        var ab = e.a_to_b || 0, ba = e.b_to_a || 0;
+        var last = e.last_at ? "\n" + fmtTime(e.last_at) : "";
+        if (!ab && !ba) {
+          var eid0 = "ge" + ei + "z";
+          mgmtEdgeMeta.push({ id: eid0, count: -1 });
+          ve.push({ id: eid0, from: e.a, to: e.b, label: (graphPrefs.nums ? "—" : "") + last, dashes: true,
+            color: { color: "#c4ccd6" }, width: 0.8, font: { size: 9, face: "Consolas" },
+            physics: false, smooth: { type: "curvedCW", roundness: 0.1 }, _sub: pickGraphSub(e, myAddr),
+            length: (kindByAddr[String(e.a || "").toLowerCase()] !== "external" || kindByAddr[String(e.b || "").toLowerCase()] !== "external") ? 90 : 260 });
+          return;
+        }
+        // Two directed arcs per pair (superior: arrows in both directions,
+        // each with its own count) — A4 wedges scale with volume.
+        if (ab) ve.push(mgmtGraphEdge(e.a, e.b, ab, last, e, "ge" + ei + "a"));
+        if (ba) ve.push(mgmtGraphEdge(e.b, e.a, ba, last, e, "ge" + ei + "b"));
+      });
+      function mgmtGraphEdge(from, to, count, last, orig, eid) {
+        var k = graphScale(count);
+        mgmtEdgeMeta.push({ id: eid, count: count, from: from, to: to });
+        // v0.2.9 方案一（1032 恢复）：边长分级——self/从属短弹簧聚内圈，外部边长弹簧外圈。
+        var kA = kindByAddr[String(from || "").toLowerCase()];
+        var kB = kindByAddr[String(to || "").toLowerCase()];
+        var base = ((kA !== "external" || kB !== "external") ? 90 : 260) * 3;
+        // 1040 (boss): SENDER-SHARE tiers — tie strength = count / sender's
+        // outgoing volume. A channel that dominates the SENDER's activity
+        // condenses (small clusters pull together), while a busy hub's
+        // diffuse fan stays soft. Decade cutoffs 0.5 / 0.25 / 0.10; below
+        // 0.10 the edge renders with the same visual mapping but exerts
+        // zero force (edge-level physics off).
+        var s = count / Math.max(1, volByAddr[String(from || "").toLowerCase()] || count);
+        var edgeLen, mult, dead = false;
+        if (s >= 0.5)       { edgeLen = base * 0.4; mult = 4; }
+        else if (s >= 0.25) { edgeLen = base * 0.8; mult = 2; }
+        else if (s >= 0.10) { edgeLen = base * 1.4; mult = 1; }
+        else                { edgeLen = base * 1.4; dead = true; }
+        for (var hi = 1; hi < mult; hi++) ve.push({
+          id: eid + "h" + hi, from: from, to: to,
+          color: { color: "rgba(0,0,0,0)", highlight: "rgba(0,0,0,0)", hover: "rgba(0,0,0,0)" },
+          width: 0.1, smooth: { type: "curvedCW", roundness: 0.1 },
+          length: edgeLen
+        });
+        // v0.6.6: alpha rides the same normalization as width — light
+        // traffic reads thin AND faint. Label = count only; the
+        // last-activity time moved to the hover tooltip (it occluded the
+        // graph at real volumes). Number color/opacity rides the SAME k
+        // as the arrow (superior request); the numbers button hides them.
+        var alpha = 0.15 + 0.85 * k;
+        return {
+          id: eid,
+          from: from, to: to, label: graphPrefs.nums ? String(count) : undefined,
+          title: count + " · " + last,
+          arrows: { to: { enabled: true, scaleFactor: 0.3 + 0.7 * k } },
+          width: 0.3 + 2.5 * k,
+          color: { color: "rgba(91,107,125," + alpha.toFixed(2) + ")", highlight: "#3b82f6" },
+          font: { size: 9, face: "Consolas", color: "rgba(35,48,63," + Math.min(1, 0.35 + 0.65 * k).toFixed(2) + ")" },
+          smooth: { type: "curvedCW", roundness: 0.1 },
+          length: edgeLen,
+          physics: !dead,
+          _sub: pickGraphSub(orig, myAddr)
+        };
+      }
+      function pickGraphSub(e, me) {
+        // Edge click → Messages preselected on the subordinate endpoint.
+        var a = String(e.a || "").toLowerCase(), bAddr = String(e.b || "").toLowerCase();
+        if (a !== me && (livenessByAddr[a] || bAddr === me)) return e.a;
+        if (bAddr !== me && (livenessByAddr[bAddr] || a === me)) return e.b;
+        return null;
+      }
+      var data = { nodes: vn, edges: new vis.DataSet(ve) };
+      mgmtEdgeSet = data.edges;
+      mgmtNodeSet = data.nodes;
+      // Keep the instance: re-entering the tab re-fits the viewport so the
+      // graph never drifts off-center between visits (superior feedback).
+      mgmtNetwork = new vis.Network(el, data, {
+        // Roomier layout (feedback: nodes sat too close at real volumes):
+        // stronger repulsion + longer springs spread the pairs so the
+        // (now capped) arrows never bury the labels. Iterations trimmed
+        // 400 -> 260: visibly faster first paint, layout quality held.
+        physics: {
+          enabled: true, solver: "barnesHut",
+          // 1033 (boss staging feedback): keep the engine LIVE — the freeze
+          // killed all dynamics (dragging moved nothing). Instead tune for
+          // real-data CONVERGENCE: milder repulsion + strong damping + a
+          // stiffer spring normalize so the simulation genuinely settles
+          // (grid-searched offline on the boss d30 export: settle ≈1s,
+          // drag-recover ≈10s, then fully still — no freeze needed).
+           barnesHut: { gravitationalConstant: -8000, springLength: 160, springConstant: 0.02, damping: 0.55, avoidOverlap: 0 },
+  // 1036 (boss 五验归一化猜想成立): stiff springs (0.08) against strong
+  // repulsion never balance — the continuous solver oscillated forever and
+  // every drag release re-rang the whole layout. Soft springs + strong
+  // repulsion + heavy damping is self-normalizing: repulsion owns the
+  // spread, springs only tie neighbors. Measured on the boss d30 export:
+  // drag release ripples 347px for one tick, then strictly 0; layout
+  // spreads ~414x689 (no clump), no stabilize()/freeze needed at all.
+  // 1035: avoidOverlap OFF — with the app's value-scaled big boxes it kept
+  // resolving overlaps every frame and the engine never slept (24k px/s
+  // sustained wobble on real data). Repulsion + two-tier springs spread
+  // nodes well enough without it.
+          // 静息阈值上调：速度低于 0.5 即休眠（Sam 建议），拖拽自动唤醒
+          minVelocity: 0.5,
+          stabilization: { iterations: 260, fit: true }
+        },
+        interaction: { hover: true, dragView: true, zoomView: true },
+        edges: { selectionWidth: 2 }
+      });
+      // 1034 (boss: "抖得不行"): the layout pre-pass itself is violent to
+      // watch, so run it in shadow - the canvas stays dimmed until the sim
+      // has settled, then fades in already still. Physics stays live for
+      // drag dynamics; damping 0.55 makes the settle quick and quiet.
+      mgmtNetwork.once("stabilizationIterationsDone", function () {
+        try { mgmtNetwork.fit({ animation: false }); } catch (_) {}
+        var el = $("#mgmt-graph");
+        if (el) el.classList.remove("is-stabilizing");
+      });
+      // 1036: dragEnd handler removed — with the normalized force balance
+      // (soft springs / strong repulsion / heavy damping) the continuous
+      // solver settles by itself after a drag, no global re-solve jolt.
+      mgmtNetwork.on("click", function (params) {
+        // 播放/暂停期间：canvas 点按=暂停↔继续（上级 0.2.5），不触发跳转
+        if (playState) {
+          if (playState.paused) {
+            playState.paused = false;
+            playState.timer = setInterval(playTick, playBeatMs());
+            if (playBadge) playBadge.textContent = playBadgeLabel("");
+          } else {
+            clearInterval(playState.timer);
+            playState.timer = null;
+            playState.paused = true;
+            if (playBadge) playBadge.textContent = playBadgeLabel("⏸ ");
+          }
+          return;
+        }
+        // Node click: jump to Messages preselected on that sub; edge click:
+        // preselect the sub endpoint of the pair. The browse pane belongs
+        // to the manage module — ask it via the event bus.
+        var jump = null;
+        if (params.nodes && params.nodes.length) {
+          var id = String(params.nodes[0]).toLowerCase();
+          if (id !== myAddr && livenessByAddr[id]) jump = params.nodes[0];
+        } else if (params.edges && params.edges.length) {
+          // 1040v2 (Devi note): hidden stiffness edges overlap the visible
+          // arcs exactly — skip them in hit-testing; if only a hidden edge
+          // was hit, fall back to its visible parent (strip the "h<n>" id
+          // suffix) so the jump feature survives stacked springs.
+          var hid = null, ed = null;
+          for (var ei = 0; ei < params.edges.length && !ed; ei++) {
+            var eid = String(params.edges[ei]);
+            if (/h\d+$/.test(eid)) { hid = eid; continue; }
+            ed = ve.filter(function (x) { return x.id === eid; })[0];
+          }
+          if (!ed && hid) ed = ve.filter(function (x) { return x.id === hid.replace(/h\d+$/, ""); })[0];
+          if (ed && ed._sub) jump = ed._sub;
+        }
+        if (jump) document.dispatchEvent(new CustomEvent("mgmt:browse-account", { detail: { address: jump } }));
+      });
+      }).catch(function () {
+        el.innerHTML = '<p class="muted">' + esc(t("mgmt.graphLoadFail")) + "</p>";
+      });
+    });
+  }
+
+  var mgmtOverviewLoaded = false;
+  var mgmtOverviewData = null; // last payload — lets the map/nums buttons
+  // re-render without a server round-trip (only the range button refetches).
+  // 1048f（boss 0924：连接图独占后没有充分利用释放的空间）：图区高度=
+  // 视口底 − 图区顶 − 页尾余量，双端自适应；下限 420px（boss 0923 批过的
+  // 手机下限）。vis-network autoResize 跟随容器重绘。
+  function fitLinksGraph() {
+    var wrap = document.getElementById("mgmt-graph-wrap");
+    if (!wrap || wrap.offsetParent === null) return;
+    var h = window.innerHeight - (window.__fixedNavInset ? window.__fixedNavInset() : 0) - wrap.getBoundingClientRect().top - 14;
+    if (h < 420) h = 420;
+    wrap.style.height = h + "px";
+  }
+  window.addEventListener("resize", fitLinksGraph);
+
+  async function loadMgmtOverview() {
+    var box = $("#mgmt-overview");
+    if (!box) return;
+    box.textContent = t("common.loading");
+    await ensureOverviewPrefs();
+    try {
+      var d = await api("/api/mgmt/subs-overview?days=" + graphPrefs.days, { keepSession: true });
+      mgmtOverviewData = d;
+      box.innerHTML = mgmtOverviewHtml(d);
+      mgmtOverviewLoaded = true;
+      lastGraphLoad = Date.now();
+      syncGraphControlLabels();
+      wireGraphControls();
+      fitLinksGraph();
+      renderMgmtGraph(d && d.graph, (d && d.subs) || []);
+      // S2: the marquee measurer lives in app.js — let it size the new
+      // .mq signature lines (accounts one-screen plan shares the grammar).
+      document.dispatchEvent(new CustomEvent("ovw:rendered"));
+    } catch (e) {
+      box.innerHTML = '<p class="muted">' + esc(t("common.error", { msg: e.message })) + "</p>";
+    }
+  }
+
+  // Floating graph controls: one click cycles the value, persists, and
+  // re-renders. map/nums reuse the cached payload; days refetches.  // Superior 01M186FW6Y: map/nums restyle edges IN PLACE (DataSet.update of
+  // visual props never re-runs physics — nodes stay exactly where they are).
+  function restyleGraphEdges() {
+    if (!mgmtNetwork || !mgmtEdgeSet) {
+      if (mgmtOverviewData) renderMgmtGraph(mgmtOverviewData.graph, mgmtOverviewData.subs || []);
+      return;
+    }
+    var logDen = Math.log(1 + mgmtMaxCount);
+    var updates = mgmtEdgeMeta.map(function (meta) {
+      if (meta.count < 0) return { id: meta.id, label: graphPrefs.nums ? "—" : "" };
+      var c = meta.count || 0;
+      var k = graphPrefs.map === "log" ? Math.log(1 + c) / logDen : c / mgmtMaxCount;
+      var alpha = 0.15 + 0.85 * k;
+      return {
+        id: meta.id,
+        // vis DataSet.update 忽略 undefined 字段——必须用空串才能真正清掉标签
+        label: graphPrefs.nums ? String(meta.count) : " ",
+        arrows: { to: { enabled: true, scaleFactor: 0.3 + 0.7 * k } },
+        width: 0.3 + 2.5 * k,
+        color: { color: "rgba(91,107,125," + alpha.toFixed(2) + ")", highlight: "#3b82f6" },
+        font: { size: 9, face: "Consolas", color: "rgba(35,48,63," + Math.min(1, 0.35 + 0.65 * k).toFixed(2) + ")" }
+      };
+    });
+    mgmtEdgeSet.update(updates);
+  }
+
+  // ---- 播放模式（上级 0.2.5）----
+  // 范围内（如 7d）全部发信活动按时间排序后逐拍高亮：当拍的发件节点与
+  // 连线加亮（高亮=更醒目，非变浅），非当拍元素降显；播放/暂停期间禁
+  // 拖拽/选中、节点位置冻结、数字隐藏；canvas 点按=暂停/继续，暂停时左
+  // 下角浮层显示当拍信件（上级复核口径：信件 id+时间，不显示 from/to）；
+  // 停止完整还原（经 restyleGraphEdges+节点原档回填）。
+  // 数据两档：真实档=自+从属各收件/发件箱分页拉取逐信 {id,t,from,to}
+  // （cc 经收件方邮箱覆盖）；拉取失败/为空回退合成档（按各边 count 合
+  // 成均匀时刻）。缓存按 days 键控，换档/重载失效。
+  var playState = null;      // null | {steps, idx, timer, paused, seqNo, total, real}
+  var playNodeOrig = null;   // 节点原样式快照（id → {color, font, borderWidth}）
+  var playBadge = null;      // 左下角当前信浮层
+  var playSeqCache = null;   // {days, steps, real}
+
+  function playGroupSteps(evs) {
+    // 上级 09-03 复核：不合拍——每信一拍，浮层逐信显示 id
+    return evs.map(function (ev) { return [ev]; });
+  }
+  function buildPlaySteps() { // 合成档（退化回退）
+    var evs = [];
+    mgmtEdgeMeta.forEach(function (meta) {
+      if (!(meta.count > 0) || !meta.from) return;
+      for (var i = 0; i < meta.count; i++) {
+        // 合成时刻：每条边内部均匀、边间按比例交错（无真实时间戳时）
+        evs.push({ t: (i + 0.5) / meta.count, id: meta.id, from: meta.from, to: meta.to, n: i + 1 });
+      }
+    });
+    evs.sort(function (a, b) { return a.t - b.t; });
+    return { steps: playGroupSteps(evs), total: evs.length, real: false };
+  }
+  // 真实档：逐信拉取自+从属的收件/发件箱（分页），窗口内按时间排序。
+  // 事件→边映射：发件箱信 × 每个 to = (owner→to) 边事件；收件箱信 =
+  // (from→owner) 边事件（cc 收件方经其收件箱覆盖）。(letterId, 边) 去重。
+  async function fetchPlaySteps() {
+    if (playSeqCache && playSeqCache.days === graphPrefs.days) return playSeqCache;
+    var myAddr = ((getSession() || {}).address || "").toLowerCase();
+    var subs = (mgmtOverviewData && mgmtOverviewData.subs) || [];
+    var owners = [myAddr];
+    subs.forEach(function (s) {
+      var a = String(s.address || "").toLowerCase();
+      if (a && owners.indexOf(a) < 0) owners.push(a);
+    });
+    var cutoff = Date.now() - graphPrefs.days * 86400000;
+    var edgeByPair = {};
+    mgmtEdgeMeta.forEach(function (meta) {
+      if (meta.count > 0 && meta.from) {
+        edgeByPair[String(meta.from).toLowerCase() + ">" + String(meta.to).toLowerCase()] = meta;
+      }
+    });
+    var seenEv = {};
+    var evs = [];
+    function absorb(owner, sent, msgs) {
+      (msgs || []).forEach(function (m) {
+        var t = m.received_at || 0;
+        if (t > 0 && t < 1e12) t = t * 1000; // 秒级时间戳→毫秒归一
+        if (t && t < cutoff) return;
+        var pairs = [];
+        if (sent) {
+          (m.to || []).forEach(function (rcpt) { pairs.push([owner, String(rcpt).toLowerCase()]); });
+        } else {
+          pairs.push([String(m.from || "").toLowerCase(), owner]);
+        }
+        pairs.forEach(function (pr) {
+          var meta = edgeByPair[pr[0] + ">" + pr[1]];
+          if (!meta) return;
+          var key = m.id + "|" + meta.id;
+          if (seenEv[key]) return;
+          seenEv[key] = 1;
+          evs.push({ t: t, id: meta.id, lid: m.id, from: pr[0], to: pr[1] });
+        });
+      });
+    }
+    async function pullOwn(sent) {
+      var path = sent ? "/api/sent" : "/api/inbox";
+      for (var offset = 0; offset < 3000; offset += 50) {
+        var d = await api(path + "?limit=50&offset=" + offset, { keepSession: true });
+        var msgs = (d && d.messages) || [];
+        absorb(myAddr, sent, msgs);
+        if (msgs.length < 50) break;
+      }
+    }
+    async function pullSub(owner) {
+      // 从属箱：/api/subs/{addr}/messages?folder=inbox|sent（单大页，无 offset）
+      for (var fi = 0; fi < 2; fi++) {
+        var folder = fi === 0 ? "inbox" : "sent";
+        try {
+          var d = await api("/api/subs/" + encodeURIComponent(owner) +
+            "/messages?folder=" + folder + "&limit=1000", { keepSession: true });
+          absorb(owner, folder === "sent", (d && d.messages) || []);
+        } catch (_) { /* 单箱失败降级跳过 */ }
+      }
+    }
+    for (var i = 0; i < owners.length; i++) {
+      if (owners[i] === myAddr) {
+        await pullOwn(false);
+        await pullOwn(true);
+      } else {
+        await pullSub(owners[i]);
+      }
+    }
+    evs.sort(function (a, b) { return a.t - b.t; });
+    var built = { days: graphPrefs.days, steps: playGroupSteps(evs), total: evs.length, real: true };
+    if (!built.steps.length) return null; // 真实档空→调用方回退合成档
+    playSeqCache = built;
+    return built;
+  }
+  function playBadgeEnsure() {
+    var wrap = document.querySelector("#mgmt-graph-wrap");
+    if (!wrap) return null;
+    if (!playBadge) {
+      playBadge = document.createElement("div");
+      playBadge.className = "play-badge";
+      wrap.appendChild(playBadge);
+    }
+    return playBadge;
+  }
+  // 四态拖尾（上级 09-03）：当拍全亮，此后每过一拍降一档——
+  // tier0 全亮 → tier1 .78 → tier2 .5 → tier3 淡化 .25；节点同步（opacity
+  // 不影响 vis label，文字色每档并行下调）。
+  var playTiers = [
+    { edge: { color: "#2563eb", width: 3, font: "#23303f", arrow: 0.5, esize: 10 },
+      node: { opacity: 1, font: "rgba(35,48,63,1)" } },
+    { edge: { color: "rgba(37,99,235,0.72)", width: 2.4, font: "rgba(35,48,63,0.72)", arrow: 0.45, esize: 9 },
+      node: { opacity: 0.78, font: "rgba(35,48,63,0.75)" } },
+    { edge: { color: "rgba(37,99,235,0.42)", width: 1.5, font: "rgba(35,48,63,0.42)", arrow: 0.3, esize: 9 },
+      node: { opacity: 0.5, font: "rgba(35,48,63,0.48)" } },
+    { edge: { color: "rgba(91,107,125,0.10)", width: 0.5, font: "rgba(35,48,63,0.10)", arrow: 0.15, esize: 9 },
+      node: { opacity: 0.25, font: "rgba(35,48,63,0.25)" } }
+  ];
+  function playTierStep(step, tier) {
+    var T0 = playTiers[Math.max(0, Math.min(3, tier))];
+    mgmtEdgeSet.update(step.map(function (ev) {
+      return { id: ev.id, color: { color: T0.edge.color }, width: T0.edge.width,
+        font: { size: T0.edge.esize, face: "Consolas", color: T0.edge.font },
+        arrows: { to: { enabled: true, scaleFactor: T0.edge.arrow } } };
+    }));
+    var seen = {};
+    var nUp = [];
+    step.forEach(function (ev) {
+      [ev.from, ev.to].forEach(function (id) {
+        if (seen[id]) return;
+        seen[id] = 1;
+        var o = (playNodeOrig || {})[id] || {};
+        var f = o.font || {};
+        if (tier === 0) { // 全亮档回填原色原字
+          nUp.push({ id: id, opacity: 1, color: o.color, font: o.font, borderWidth: o.borderWidth || 1 });
+        } else {
+          nUp.push({ id: id, opacity: T0.node.opacity,
+            font: { face: f.face || "ui-monospace, Consolas, monospace", size: f.size || 11, color: T0.node.font } });
+        }
+      });
+    });
+    mgmtNodeSet.update(nUp);
+  }
+  // 浮层文本（上级口径：信件 id+时间，不显示 from/to）；prefix=暂停符号等
+  function playBadgeLabel(prefix) {
+    var step = playState.steps[playState.idx - 1];
+    if (!step) return prefix + "…";
+    var e0 = step[0];
+    // fmtTime 的数字参数按秒计（core.js），内部 t 已归一毫秒——显示前折回
+    var label = e0.lid ? ("✉ " + e0.lid + " · " + fmtTime(Math.round(e0.t / 1000))) : ("✉ 合成序列 #" + playState.idx);
+    return prefix + label + (step.length > 1 ? " ×" + step.length : "") +
+      "  [" + playState.idx + "/" + playState.steps.length + "]";
+  }
+  function playTick() {
+    if (!playState) return;
+    if (playState.idx >= playState.steps.length) { stopPlay(); return; }
+    // 四态拖尾（上级 09-03）：当拍全亮，越旧的拍逐档下沉，隔帧下降。
+    // 刷档顺序=从最旧到最新：同一连线在相邻拍重复出现时，最新一拍的
+    // 档位最后落笔获胜（否则旧拍的淡化会盖掉当拍高亮——上级实测 bug）。
+    for (var back = 3; back >= 1; back--) {
+      if (playState.idx - back >= 0) playTierStep(playState.steps[playState.idx - back], back);
+    }
+    playTierStep(playState.steps[playState.idx], 0);
+    playState.idx++;
+    if (playBadge) playBadge.textContent = playBadgeLabel("");
+  }
+  function syncPlayButtons(txt, stop, big) {
+    $$(".gg-play").forEach(function (b) {
+      b.textContent = txt;
+      b.classList.toggle("is-stop", !!stop);
+      if (big) { b.style.fontSize = "16px"; b.style.lineHeight = "1"; }
+      else { b.style.fontSize = ""; b.style.lineHeight = ""; }
+    });
+  }
+
+  function stopPlay() {
+    if (playState && playState.timer) clearInterval(playState.timer);
+    playState = null;
+    restyleGraphEdges(); // 连线按偏好完整还原（含数字）
+    if (mgmtNodeSet && playNodeOrig) {
+      var nUp = Object.keys(playNodeOrig).map(function (id) {
+        var o = playNodeOrig[id];
+        return { id: id, opacity: 1, color: o.color, font: o.font, borderWidth: o.borderWidth || 1 };
+      });
+      mgmtNodeSet.update(nUp);
+    }
+    playNodeOrig = null;
+    if (playBadge) { playBadge.remove(); playBadge = null; }
+    if (mgmtNetwork) mgmtNetwork.setOptions({ interaction: { dragNodes: true, dragView: true, selectable: true, hover: true } });
+    syncPlayButtons(t("graph.play"), false, false);
+  }
+  var playLoading = false;
+  async function startPlay() {
+    if (!mgmtNetwork || !mgmtEdgeSet || playState || playLoading) return;
+    playLoading = true;
+    playBadgeEnsure();
+    if (playBadge) playBadge.textContent = "载入往来…";
+    var built = null;
+    try { built = await fetchPlaySteps(); } catch (_) {}
+    if (!built || !built.steps.length) built = buildPlaySteps(); // 真实档空/失败→合成档
+    if (!built.steps.length) {
+      if (playBadge) playBadge.textContent = "范围内无流量";
+      setTimeout(function () { if (!playState && playBadge) { playBadge.remove(); playBadge = null; } }, 1500);
+      playLoading = false;
+      return;
+    }
+    playState = { steps: built.steps, idx: 0, timer: null, paused: false, total: built.total, real: !!built.real, speed: 1 };
+    // 冻结+禁拖+禁选（暂停态下边不再可选中，上级 0.2.5 复核）+隐藏数字
+    // v0.2.9 (boss): playback locks zoom too — a wheel tick mid-play used
+    // to yank the viewport off the moving nodes.
+    mgmtNetwork.setOptions({ interaction: { dragNodes: false, dragView: false, zoomView: false, selectable: false, hover: false } });
+    playNodeOrig = {};
+    var nUp = [];
+    mgmtNodeSet.forEach(function (n) {
+      playNodeOrig[n.id] = { color: n.color, font: n.font, borderWidth: n.borderWidth };
+      nUp.push({ id: n.id, opacity: 0.25, font: { face: "ui-monospace, Consolas, monospace", size: 11, color: "rgba(35,48,63,0.25)" } });
+    });
+    mgmtNodeSet.update(nUp);
+    mgmtEdgeSet.update(mgmtEdgeMeta.map(function (meta) {
+      return { id: meta.id, label: " ", width: 0.5,
+        color: { color: "rgba(91,107,125,0.10)" },
+        font: { size: 9, face: "Consolas", color: "rgba(35,48,63,0.10)" },
+        arrows: { to: { enabled: true, scaleFactor: 0.15 } } };
+    }));
+    playBadgeEnsure();
+    // 三态循环（上级 09-03）：▶ 待播 → ▶▶ 一倍速播放中（点进二倍速）→ ■(大) 二倍速播放中（点停）
+    syncPlayButtons(t("graph.fast"), false, false);
+    playLoading = false;
+    playState.timer = setInterval(playTick, playBeatMs());
+  }
+  function playBeatMs() { // 一倍速=原先一半（上级定义），2×=原速
+    return playState && playState.speed === 2 ? 30 : 60;
+  }
+  function togglePlay() {
+    if (playLoading) return;
+    if (!playState) { startPlay(); return; }
+    if (playState.speed === 1) { // 1×→2×
+      playState.speed = 2;
+      if (playState.timer) { clearInterval(playState.timer); playState.timer = setInterval(playTick, playBeatMs()); }
+      syncPlayButtons(t("graph.stop"), true, true);
+      return;
+    }
+    stopPlay(); // 2×→停止
+  }
+
+  function wireGraphControls() {
+    var b1 = $("#gg-map"), b2 = $("#gg-nums"), b3 = $("#gg-days");
+    if (b1) b1.addEventListener("click", function () {
+      graphPrefs.map = graphPrefs.map === "linear" ? "log" : "linear";
+      saveGraphPrefs(); syncGraphControlLabels();
+      restyleGraphEdges();
+    });
+    if (b2) b2.addEventListener("click", function () {
+      graphPrefs.nums = !graphPrefs.nums;
+      saveGraphPrefs(); syncGraphControlLabels();
+      restyleGraphEdges();
+    });
+    if (b3) b3.addEventListener("click", function () {
+      graphPrefs.days = graphPrefs.days === 1 ? 7 : (graphPrefs.days === 7 ? 30 : 1);
+      saveGraphPrefs();
+      loadMgmtOverview();
+    });
+    $$(".gg-play").forEach(function (b) { b.addEventListener("click", togglePlay); });
+    $$(".gg-export").forEach(function (b) { b.addEventListener("click", exportConnectionMatrix); });
+  }
+
+  // 0.3 (boss, 01M2YSWNBT): export the graph as a plain CONNECTION MATRIX
+  // (letter counts, directed) in JSON — no desensitization, single format.
+  // Pure client-side: the overview payload is already in hand.
+  function exportConnectionMatrix() {
+    var d = mgmtOverviewData;
+    var nodes = (d && d.graph && d.graph.nodes) || [];
+    var edges = (d && d.graph && d.graph.edges) || [];
+    if (!nodes.length) { toast(t("mgmt.gExportEmpty"), "error"); return; }
+    var idx = {};
+    nodes.forEach(function (n, i) { idx[String(n.address).toLowerCase()] = i; });
+    var m = nodes.map(function () { return nodes.map(function () { return 0; }); });
+    edges.forEach(function (e) {
+      var i = idx[String(e.a).toLowerCase()], j = idx[String(e.b).toLowerCase()];
+      if (i == null || j == null) return;
+      if (e.a_to_b) m[i][j] += e.a_to_b;
+      if (e.b_to_a) m[j][i] += e.b_to_a;
+    });
+    var out = {
+      version: 1,
+      type: "connection-matrix",
+      days: graphPrefs.days,
+      generated_at: new Date().toISOString(),
+      // 0.3.1 (boss): per-node outgoing volume rides along in the export.
+      nodes: nodes.map(function (n) { return { address: String(n.address), volume: n.volume || 0 }; }),
+      matrix: m
+    };
+    var blob = new Blob([JSON.stringify(out, null, 2)], { type: "application/json" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "mgmt-graph-" + new Date().toISOString().slice(0, 10) + "-d" + graphPrefs.days + ".json";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
+    toast(t("common.saved") || "OK", "success");
+  }
+
+
+  // In-view actions: refresh, or deep-link to Accounts / a subordinate's
+  // Messages view (the browse pane is the manage module's — bus again).
+  (function wireOverviewActions() {
+    var box = $("#mgmt-overview");
+    if (!box) return;
+    box.addEventListener("click", function (ev) {
+      var btn = ev.target.closest("[data-mgmt-go]");
+      if (btn) {
+        if (btn.dataset.mgmtGo === "accounts") { document.dispatchEvent(new CustomEvent("nav:activate", { detail: { tab: "accounts" } })); return; }
+      }
+    });
+  })();
+
+  // ---- event surface (the manage module owns the capsule + browse pane) ----
+  var lastGraphLoad = 0;
+  document.addEventListener("overview:entered", function () {
+    if (!getSession()) return;
+    if (!mgmtOverviewLoaded || Date.now() - lastGraphLoad > 60000) loadMgmtOverview();
+    else if (mgmtNetwork) setTimeout(function () {
+      try { mgmtNetwork.fit({ animation: false }); } catch (_) {}
+    }, 0);
+  });
+  document.addEventListener("overview:refresh", function () {
+    if (mgmtOverviewLoaded) loadMgmtOverview();
+  });
+  document.addEventListener("overview:reset", function () {
+    mgmtOverviewLoaded = false;
+    overviewPrefs = null;
+    var b2 = document.getElementById("mgmt-overview");
+    if (b2) b2.textContent = "";
+  });
+  document.addEventListener("i18n:change", function () {
+    if (mgmtOverviewLoaded) loadMgmtOverview();
+  });
+})();

@@ -1,0 +1,547 @@
+package server
+
+import (
+	"bytes"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/agentmail/agentmail/internal/audit"
+	"github.com/agentmail/agentmail/internal/store"
+)
+
+// Subordinate-account API (v1). A (the authenticated account) declares
+// itself a subordinate of B; B can then read A's inbox+sent (scope is a
+// reserved field, v1 always "both"). Self-declared, revocable, queries
+// never recurse. 404 masquerade: unauthorized relationship reads look
+// identical to "no such account" so existence of a relationship is not
+// leaked.
+//
+//   POST   /api/subs              {"superior": "b@x", "scope": "both"}   (auth = A)
+//   DELETE /api/subs?superior=...                                          (auth = A)
+//   GET    /api/subs                                                        (auth = caller: own edges both ways)
+//   GET    /api/subs/{A}/messages?folder=inbox|sent|both&limit=            (auth = B)
+//   POST   /api/subs/remove         {"address": "x@y"}                     (auth = either end; v0.6.5)
+
+// declareRateLimit is the per-account hourly cap on declare calls (anti
+// spamming of relationship edges; revokes are free).
+const declareRateLimit = 10
+
+// handleSubs dispatches /api/subs by method: GET = list own edges,
+// POST = declare, DELETE = revoke.
+func (s *Server) handleSubs(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		s.handleSubsList(w, r)
+	case http.MethodPost:
+		s.handleSubsDeclare(w, r)
+	case http.MethodDelete:
+		s.handleSubsRevoke(w, r)
+	default:
+		methodNotAllowed(w)
+	}
+}
+
+// handleSubsList returns the caller's own edges: subordinates (who declared
+// under me) and superiors (who I declared under).
+func (s *Server) handleSubsList(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		methodNotAllowed(w)
+		return
+	}
+	me := accountFrom(r.Context())
+	writeJSON(w, http.StatusOK, map[string]any{
+		"subordinates": s.store.SubordinatesOf(me),
+		"superiors":    s.store.SuperiorsOf(me),
+	})
+}
+
+// handleSubsDeclare declares the authenticated account (A) a subordinate of
+// body.superior (B). Idempotent; audited.
+func (s *Server) handleSubsDeclare(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		methodNotAllowed(w)
+		return
+	}
+	me := accountFrom(r.Context())
+	var body struct {
+		Superior string `json:"superior"`
+		Scope    string `json:"scope"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		badRequest(w, "invalid body: "+err.Error())
+		return
+	}
+	if strings.TrimSpace(body.Superior) == "" {
+		badRequest(w, "superior is required")
+		return
+	}
+	// Scope field is reserved: v1 only accepts "both" (or omitted).
+	if body.Scope != "" && body.Scope != "both" {
+		badRequest(w, "scope values other than \"both\" are not supported in v1")
+		return
+	}
+	// Anti-spam: cap declares per account per hour.
+	s.rateMu.Lock()
+	now := time.Now()
+	rw := s.declareRates[me]
+	if rw == nil || now.Sub(rw.windowStart) >= time.Hour {
+		rw = &rateWindow{windowStart: now}
+		s.declareRates[me] = rw
+	}
+	if rw.count >= declareRateLimit {
+		s.rateMu.Unlock()
+		http.Error(w, fmt.Sprintf("declare rate limit exceeded (%d/hour)", declareRateLimit), http.StatusTooManyRequests)
+		return
+	}
+	rw.count++
+	s.rateMu.Unlock()
+
+	if err := s.store.DeclareSubordinate(body.Superior, me); err != nil {
+		if err == store.ErrNoSuchAccount {
+			http.Error(w, "no such account", http.StatusNotFound)
+			return
+		}
+		s.badRequestErr(w, r, err)
+		return
+	}
+	_ = s.audit.Record(r.Context(), audit.ActionSubDeclare, me, "declare-sub superior="+body.Superior)
+	writeJSON(w, http.StatusCreated, map[string]any{
+		"status":   "declared",
+		"superior": body.Superior,
+		"scope":    "both",
+	})
+}
+
+// handleSubsRevoke removes the authenticated account's (A's) declaration
+// under the given superior (B). Idempotent; audited. Takes effect on the
+// very next read (no caching).
+func (s *Server) handleSubsRevoke(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodDelete {
+		methodNotAllowed(w)
+		return
+	}
+	me := accountFrom(r.Context())
+	superior := strings.TrimSpace(r.URL.Query().Get("superior"))
+	if superior == "" {
+		badRequest(w, "superior query parameter is required")
+		return
+	}
+	if err := s.store.RevokeSubordinate(superior, me); err != nil {
+		if err == store.ErrNoSuchAccount {
+			http.Error(w, "no such account", http.StatusNotFound)
+			return
+		}
+		s.badRequestErr(w, r, err)
+		return
+	}
+	_ = s.audit.Record(r.Context(), audit.ActionSubRevoke, me, "revoke-sub superior="+superior)
+	writeJSON(w, http.StatusOK, map[string]any{"status": "revoked", "superior": superior})
+}
+
+// handleSubsRemove implements the v0.6.5 bidirectional removal contract
+// (alice 01M0VCEDB): the authenticated account removes its subordinate
+// relationship with {address} — the unique edge is deleted regardless of
+// which end the initiator occupies, and the server auto-sends a system
+// notification mail to the other party in the same transaction. A missing
+// relationship is 404, matching the subs masquerade semantics (no
+// existence leak); no idempotency beyond that.
+func (s *Server) handleSubsRemove(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		methodNotAllowed(w)
+		return
+	}
+	me := accountFrom(r.Context())
+	raw, _ := io.ReadAll(io.LimitReader(r.Body, 4096))
+	var body struct {
+		Address string `json:"address"`
+	}
+	if err := json.Unmarshal(raw, &body); err != nil {
+		badRequest(w, "invalid JSON body")
+		return
+	}
+	addr := strings.ToLower(strings.TrimSpace(body.Address))
+	if addr == "" {
+		badRequest(w, "address is required")
+		return
+	}
+	role, err := s.store.RemoveSubordinate(strings.ToLower(me), addr)
+	if errors.Is(err, store.ErrNoSubRelationship) {
+		http.Error(w, "no such relationship", http.StatusNotFound)
+		return
+	}
+	if err != nil {
+		internalError(w, err.Error())
+		return
+	}
+	_ = s.audit.Record(r.Context(), audit.ActionSubRemoved, me, "sub-remove target="+addr+" initiator_role="+role)
+	writeJSON(w, http.StatusOK, map[string]any{
+		"removed":        true,
+		"initiator_role": role,
+	})
+}
+
+// handleSubsMessages lets B (authenticated) read A's messages. Authorization
+// is checked first and failures masquerade as 404 so the existence of a
+// relationship is never leaked. Attachment access codes are stripped (Q2
+// ruling: metadata only — download requires A's explicit grant).
+func (s *Server) handleSubsMessages(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		methodNotAllowed(w)
+		return
+	}
+	me := accountFrom(r.Context())
+	// Path: /api/subs/{A}/messages (list) or /api/subs/{A}/message (detail).
+	segs := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+	if len(segs) != 4 || (segs[3] != "messages" && segs[3] != "message") {
+		http.NotFound(w, r)
+		return
+	}
+	target := segs[2]
+
+	// Self-read: the flat "all visible accounts" view may address the
+	// caller's OWN mailbox through this uniform path. That must behave
+	// exactly like /api/message — including clearing the unread marker
+	// (subordinate reads deliberately never touch A's read state, which
+	// made the own-inbox badge stuck when the panel routed self-reads
+	// here) — and must not require a self-relationship (which 404'd).
+	if strings.EqualFold(me, target) {
+		if segs[3] == "message" {
+			id := strings.TrimSpace(r.URL.Query().Get("id"))
+			if id == "" {
+				badRequest(w, "id query parameter is required")
+				return
+			}
+			msg, err := s.store.GetMessage(me, id) // normal semantics: visibility + MarkRead
+			if err != nil {
+				http.NotFound(w, r)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{
+				"subordinate": target,
+				"message":     *msg, // own mailbox: attachment codes visible, nothing stripped
+			})
+			return
+		}
+		folder := r.URL.Query().Get("folder")
+		if folder == "" {
+			folder = "both"
+		}
+		limit := 50
+		if l, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && l > 0 && l <= 200 {
+			limit = l
+		}
+		msgs, err := s.store.ReadSubordinateMessages(me, folder, limit)
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"subordinate": target,
+			"folder":      folder,
+			"count":       len(msgs),
+			"messages":    msgs,
+		})
+		return
+	}
+
+	// The masquerade: no relationship and no account look identical.
+	if !s.store.IsSubordinate(me, target) {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Detail: GET /api/subs/{A}/message?id=<messageID> — full body, cc
+	// included; attachment access codes stripped unless the reader is
+	// himself a recipient of this message (see below).
+	if segs[3] == "message" {
+		id := strings.TrimSpace(r.URL.Query().Get("id"))
+		if id == "" {
+			badRequest(w, "id query parameter is required")
+			return
+		}
+		if s.store.ShouldAuditSubRead(me, target) {
+			_ = s.audit.Record(r.Context(), audit.ActionSubRead, me, "sub-read target="+target)
+		}
+		msg, err := s.store.GetSubordinateMessage(id)
+		if err != nil {
+			http.NotFound(w, r) // same masquerade shape
+			return
+		}
+		// The message must belong to the subordinate's view (their inbox or
+		// sent reference) — otherwise B could fish arbitrary message ids.
+		if !s.store.MessageReferencedBy(target, id) {
+			http.NotFound(w, r)
+			return
+		}
+		// Q2 strips access codes so a superior reading a subordinate's mail
+		// gets metadata-only attachments. When the reader is himself a
+		// recipient of this letter (to/cc), the download endpoint already
+		// authorizes him — keep the codes so the read-only pane can offer
+		// the same downloads his own inbox has (0924 boss report: a
+		// subordinate's letter TO the viewer showed its attachments as
+		// "download not authorized"). Non-recipient readers keep the
+		// stripped payload; the download endpoint enforces authorization
+		// regardless, so this branch grants no new capability.
+		out := *msg
+		if !isMessageRecipient(out, me) {
+			out = stripAttachmentCodes(out)
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"subordinate": target,
+			"message":     out,
+		})
+		return
+	}
+
+	// Sampled audit: first read per (B,A) per hour is recorded.
+	if s.store.ShouldAuditSubRead(me, target) {
+		_ = s.audit.Record(r.Context(), audit.ActionSubRead, me, "sub-read target="+target)
+	}
+
+	folder := r.URL.Query().Get("folder")
+	if folder == "" {
+		folder = "both"
+	}
+	limit := 50
+	if l, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && l > 0 && l <= 200 {
+		limit = l
+	}
+	msgs, err := s.store.ReadSubordinateMessages(target, folder, limit)
+	if err != nil {
+		http.NotFound(w, r) // target vanished mid-request — same masquerade
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"subordinate": target,
+		"folder":      folder,
+		"count":       len(msgs),
+		"messages":    msgs,
+	})
+}
+
+// stripAttachmentCodes returns a copy of the message with every
+// attachment's access code removed — metadata only for the superior's view
+// (Q2 ruling: download requires the subordinate's explicit grant).
+func stripAttachmentCodes(m store.Message) store.Message {
+	if len(m.Attachments) == 0 {
+		return m
+	}
+	m.Attachments = append([]store.AttachmentMeta(nil), m.Attachments...)
+	for i := range m.Attachments {
+		m.Attachments[i].AccessCode = ""
+	}
+	return m
+}
+
+// isMessageRecipient reports whether addr is a to/cc recipient of m
+// (case-insensitive, same matching semantics as the file download
+// authorization in the store).
+func isMessageRecipient(m store.Message, addr string) bool {
+	for _, a := range m.To {
+		if strings.EqualFold(a, addr) {
+			return true
+		}
+	}
+	for _, a := range m.CC {
+		if strings.EqualFold(a, addr) {
+			return true
+		}
+	}
+	return false
+}
+
+// sendSubordinateIntro delivers the system-drafted first letter from a newly
+// registered subordinate to its superior (boss 10-15 12:38 order, 0.3.7.4).
+// Best-effort: a delivery failure must never fail the registration itself —
+// the account already exists and the edge is set; the letter is a courtesy.
+// Hierarchy exemption makes it deliverable even under an enabled whitelist.
+func (s *Server) sendSubordinateIntro(subAddr, superior string) {
+	subject := fmt.Sprintf("报到：%s 已就位", localPart(subAddr))
+	body := "这是一封系统代发的报到信。\n\n" +
+		"新从属账户 " + subAddr + " 已完成注册，并挂靠到你的名下。\n\n" +
+		"你可以：\n" +
+		"· 查看它与任何账户的往来信件（上级可查看从属往来）；\n" +
+		"· 为它设置发信限制、白名单等管理动作（总览页或账户页）；\n" +
+		"· 直接回复本信，与它建立第一次联系。\n\n" +
+		"（本信由系统代新从属账户发出，无需处理。）"
+	if _, err := s.store.Send(subAddr, localPart(subAddr), []string{superior}, nil, subject, body, ""); err != nil {
+		fmt.Printf("intro letter delivery failed for %s -> %s: %v\n", subAddr, superior, err)
+	}
+}
+
+// handleRegisterSubordinate creates a fresh random account and declares it
+// a subordinate of the authenticated caller, in one step — the panel's
+// "register subordinate account" button (mrf2000/上级 request via alice's
+// new address). Naming/password reuse the one-click register generators;
+// the one-time password is returned exactly once (same semantics as
+// /api/register). Deliberately NOT exposed through MCP: agents compose
+// register + subs API themselves.
+//
+//	POST /api/register-subordinate (account auth, no body)
+//	-> {"address": "...", "password": "...", "declared": true}
+func (s *Server) handleRegisterSubordinate(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		methodNotAllowed(w)
+		return
+	}
+	owner := accountFrom(r.Context())
+
+	// Guard 1: cap the number of subordinates one account may provision.
+	if store.MaxSubordinates > 0 {
+		if got := len(s.store.SubordinatesOf(owner)); got >= store.MaxSubordinates {
+			http.Error(w, fmt.Sprintf("subordinate limit reached (%d)", store.MaxSubordinates), http.StatusTooManyRequests)
+			return
+		}
+	}
+	// Guard 2: reuse the per-IP registration throttle.
+	if !s.regLimit.allow(clientIP(r), s.store.GetRegisterIPRateLimit(), time.Now()) {
+		http.Error(w, "too many registrations from this address, try again later", http.StatusTooManyRequests)
+		return
+	}
+
+	// v0.6.4 contract: an optional {username} names the subordinate
+	// explicitly. Taken names answer 409 (the one-time password display
+	// must match what the caller typed — no silent renames). Absent/empty
+	// body keeps the random bot-<8> behavior.
+	//
+	// 0.3.7 batch upgrade (boss 10-12 12:35): the username may carry
+	// SEPARATORS — one action provisions several named subordinates, each
+	// auto-declared under the caller (default cap: 10 per action).
+	// Separators: comma, semicolon, plus, whitespace, and the CJK
+	// equivalents（、，；）. Single-name requests keep the v0.6.4 shape
+	// exactly; batch answers {"created":[...],"failed":[...]}.
+	domain := s.domain()
+	named := ""
+	bodyCLI := ""
+	if raw, _ := io.ReadAll(io.LimitReader(r.Body, 4096)); len(bytes.TrimSpace(raw)) > 0 {
+		var body struct {
+			Username string `json:"username"`
+			CLI      string `json:"cli"` // optional: "pi"|"opencode" (default opencode) — rides the minted worker config
+		}
+		if err := json.Unmarshal(raw, &body); err != nil {
+			badRequest(w, "invalid body: "+err.Error())
+			return
+		}
+		named = strings.TrimSpace(body.Username)
+		bodyCLI = body.CLI
+		// Batch names carry separators and are validated per-field in the
+		// batch branch below; only single names get the whole-string check.
+		if named != "" && !strings.ContainsAny(named, ",;+ \t、，；") {
+			if len(named) > 32 || !isASCIILocalPart(named) {
+				badRequest(w, "username must be ASCII letters, digits, '-' or '_' (max 32 chars)")
+				return
+			}
+		}
+	}
+
+	// Batch path (0.3.7): separators present -> provision all in one
+	// action. Pre-check every name (existence + shape) BEFORE creating
+	// anything: one taken name fails the whole action with 409 and
+	// nothing is half-created.
+	if named != "" && strings.ContainsAny(named, ",;+ \t、，；") {
+		fields := strings.FieldsFunc(named, func(rn rune) bool {
+			return strings.ContainsRune(",;+ \t、，；", rn)
+		})
+		names, seen := []string{}, map[string]bool{}
+		for _, f := range fields {
+			f = strings.ToLower(strings.TrimSpace(f))
+			if f == "" || seen[f] {
+				continue
+			}
+			seen[f] = true
+			names = append(names, f)
+		}
+		if len(names) == 0 {
+			badRequest(w, "no usable names among separators")
+			return
+		}
+		const batchCap = 10
+		if len(names) > batchCap {
+			badRequest(w, fmt.Sprintf("batch register: max %d names per action, got %d", batchCap, len(names)))
+			return
+		}
+		for _, n := range names {
+			if len(n) > 32 || !isASCIILocalPart(n) {
+				badRequest(w, "username must be ASCII letters, digits, '-' or '_' (max 32 chars): "+n)
+				return
+			}
+			if _, err := s.store.GetAccount(n + "@" + domain); err == nil {
+				conflict(w, "address already taken: "+n)
+				return
+			}
+		}
+		created := make([]map[string]any, 0, len(names))
+		for _, n := range names {
+			ca, err := s.store.CreateAccount(n, domain, false)
+			if err != nil {
+				created = append(created, map[string]any{"name": n, "failed": true, "reason": err.Error()})
+				continue
+			}
+			if err := s.store.DeclareSubordinate(owner, ca.Address); err != nil {
+				created = append(created, map[string]any{"name": n, "failed": true, "reason": "declare: " + err.Error()})
+				continue
+			}
+			s.sendSubordinateIntro(ca.Address, owner) // 0.3.7.4 boss order: one intro letter per subordinate
+			entry := map[string]any{"address": ca.Address, "password": ca.Password, "declared": true}
+			s.appendWorkerConfig(r, entry, bodyCLI)
+			created = append(created, entry)
+		}
+		_ = s.audit.Record(r.Context(), audit.ActionSubDeclare, owner, fmt.Sprintf("register-subordinate batch x%d", len(names)))
+		writeJSON(w, http.StatusCreated, map[string]any{"created": created})
+		return
+	}
+	var res *store.CreateAccountResult
+	if named != "" {
+		r, err := s.store.CreateAccount(named, domain, false)
+		if err != nil {
+			if errors.Is(err, store.ErrAccountExists) {
+				conflict(w, "address already taken")
+				return
+			}
+			badRequest(w, "create subordinate: "+err.Error())
+			return
+		}
+		res = r
+	} else {
+		// Random bot-<8hex> name, retried on (unlikely) collision.
+		for i := 0; i < 5; i++ {
+			name := "bot-" + store.GeneratePassword(8)
+			r, err := s.store.CreateAccount(name, domain, false)
+			if err == nil {
+				res = r
+				break
+			}
+			if !strings.Contains(err.Error(), "exists") {
+				badRequest(w, "create subordinate: "+err.Error())
+				return
+			}
+		}
+	}
+	if res == nil {
+		internalError(w, "could not allocate a subordinate name, retry")
+		return
+	}
+
+	// Declare the new account under the caller (fresh account always exists).
+	if err := s.store.DeclareSubordinate(owner, res.Address); err != nil {
+		// Account exists but the edge failed: unusable half-state — best we
+		// can do is report; the orphaned account TTLs out of use naturally.
+		internalError(w, "subordinate created but declare failed: "+err.Error())
+		return
+	}
+	_ = s.audit.Record(r.Context(), audit.ActionSubDeclare, owner, "register-subordinate "+res.Address)
+	s.sendSubordinateIntro(res.Address, owner) // 0.3.7.4 boss order: intro letter on registration
+	resp := map[string]any{
+		"address":  res.Address,
+		"password": res.Password, // one-time, never stored in the clear again
+		"declared": true,
+	}
+	s.appendWorkerConfig(r, resp, bodyCLI)
+	writeJSON(w, http.StatusCreated, resp)
+}
