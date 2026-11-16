@@ -2,6 +2,8 @@
 
 This document explains the moving parts of agentmail and how they fit
 together. For the security/isolation model, see [isolation.md](isolation.md).
+For process rules (CI, structure gates, release policy), see
+[HANDOVER.md](HANDOVER.md).
 
 ## Why not a real mail server?
 
@@ -14,8 +16,8 @@ unusable for the intended audience.
 So agentmail is a purpose-built message store. It borrows the **ideas** that
 matter from mail servers (mailbox delivery model, unique message IDs,
 account-scoped isolation) and drops everything that exists only for SMTP
-compliance. The result is two small Go binaries with one embedded database
-file between them.
+compliance. The result is three small Go binaries — server, gateway, and duty
+worker — with one embedded database file between them.
 
 ## Components
 
@@ -25,7 +27,9 @@ Owns the only handle to a bbolt database file. Serves an HTTP API where
 every mailbox-affecting endpoint requires HTTP Basic auth as the acting
 account. The server has **no concept of sessions or access codes** — those
 live entirely in the gateway. This keeps the server a simple, stateless
-storage service.
+storage service. The web panel (including its WebP guide screenshots) is
+embedded at build time, so the binary remains self-contained and offline
+capable.
 
 bbolt layout:
 
@@ -56,6 +60,15 @@ disk.
 For each tool call the gateway: looks up the code, checks TTL/call budget,
 recovers the credentials, and forwards an HTTP Basic-authed request to the
 server. It is a thin translation layer.
+
+### agentmail-worker (optional, always-on)
+
+A duty runner for sessions that should not be woken by hand. It polls the
+inbox over the HTTP API with the account's real credentials and, when mail
+arrives, spawns a CLI session (pi / opencode / claude / codex) in the
+account's workdir. It never touches the database directly and keeps no mail
+state of its own; session binding lives in a small state file outside the
+workdir. See [worker.md](worker.md) and [config.md](config.md).
 
 ### Agent clients
 
