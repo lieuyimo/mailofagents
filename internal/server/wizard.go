@@ -12,9 +12,9 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/agentmail/agentmail/internal/audit"
-	"github.com/agentmail/agentmail/internal/config"
-	"github.com/agentmail/agentmail/internal/store"
+	"github.com/lieuyimo/mailofagents/internal/audit"
+	"github.com/lieuyimo/mailofagents/internal/config"
+	"github.com/lieuyimo/mailofagents/internal/store"
 )
 
 // WizardPort is the fixed port the setup wizard listens on. It is separate

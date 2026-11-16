@@ -18,7 +18,7 @@ import (
 	"syscall"
 	"unicode/utf8"
 
-	"github.com/agentmail/agentmail/internal/worker"
+	"github.com/lieuyimo/mailofagents/internal/worker"
 )
 
 func isTerminal(f *os.File) bool {

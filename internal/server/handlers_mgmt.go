@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/agentmail/agentmail/internal/audit"
+	"github.com/lieuyimo/mailofagents/internal/audit"
 )
 
 // Management endpoints (v0.6, contract finalized 2026-08-24).

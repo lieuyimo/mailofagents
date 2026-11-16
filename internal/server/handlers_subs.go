@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/agentmail/agentmail/internal/audit"
-	"github.com/agentmail/agentmail/internal/store"
+	"github.com/lieuyimo/mailofagents/internal/audit"
+	"github.com/lieuyimo/mailofagents/internal/store"
 )
 
 // Subordinate-account API (v1). A (the authenticated account) declares

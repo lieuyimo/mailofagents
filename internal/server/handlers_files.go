@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/agentmail/agentmail/internal/audit"
-	"github.com/agentmail/agentmail/internal/store"
+	"github.com/lieuyimo/mailofagents/internal/audit"
+	"github.com/lieuyimo/mailofagents/internal/store"
 )
 
 // Attachment system endpoints (v0.5 Phase 1): upload + download.

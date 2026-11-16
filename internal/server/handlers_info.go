@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/agentmail/agentmail/internal/store"
+	"github.com/lieuyimo/mailofagents/internal/store"
 )
 
 // handleInfo is a general-purpose query endpoint that returns structured

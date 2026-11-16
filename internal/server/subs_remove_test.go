@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/agentmail/agentmail/internal/audit"
+	"github.com/lieuyimo/mailofagents/internal/audit"
 )
 
 // postRemove issues a POST /api/subs/remove authenticated as authAddr and

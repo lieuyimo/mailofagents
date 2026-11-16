@@ -23,14 +23,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/agentmail/agentmail/internal/httpclient"
+	"github.com/lieuyimo/mailofagents/internal/httpclient"
 )
 
 // CodeTTL is how long an access code stays valid.
 var CodeTTL = time.Hour
 
 // Version is the agentmail-gateway version. Overridden at build time via
-// -ldflags "-X github.com/agentmail/agentmail/internal/gateway.Version=v0.1.2".
+// -ldflags "-X github.com/lieuyimo/mailofagents/internal/gateway.Version=v0.1.2".
 // Reported in the MCP initialize handshake and via server_info(query="status")
 // alongside the server's suggested_min_gateway_version, so agents and ops can
 // tell whether the gateway binary is due for a swap.
