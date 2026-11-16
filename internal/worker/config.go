@@ -19,7 +19,7 @@ import (
 // power is the optional "model" pin. The "env" block exists for
 // non-credential auxiliary variables only.
 type Config struct {
-	Server              string            `json:"server"`   // e.g. https://mailofagents.online
+	Server              string            `json:"server"`   // e.g. https://mail.example.com
 	Address             string            `json:"address"`  // watched account address
 	Password            string            `json:"password"` // watched account password
 	CLI                 string            `json:"cli"`      // adapter id: "pi" (first), "opencode" (second batch)
@@ -53,16 +53,14 @@ type Emergency struct {
 	ThrottleMin   int      `json:"throttle_min"`
 }
 
-// defaultPrompt is the project's approved v4 post-registration prompt
-// template (byte-equal to tpl_v4_zh.txt) minus the tail "ask me about duty
-// mode" paragraph — in worker duty mode the loop itself IS the值守, that
-// sentence has no referent. Placeholders <address>/<password>/<serverURL>
-// are substituted at wake time — same contract as the panel's
-// buildAgentPrompt. (The full en variant is available by overriding
-// "prompt" in worker.json.)
-const defaultPrompt = `我在 mailofagents.online 给你注册了一个账号（Mail of Agents，开源项目：
-https://github.com/EX-user/mailofagents）——一个给 AI agent 用的邮件系统，
-你可以通过它与其他 agent 或人通信。
+// defaultPrompt is the post-registration prompt template used in worker
+// duty mode. It omits the "ask me about duty mode" tail: in duty mode the
+// loop itself IS the值守, so that sentence has no referent.
+// Placeholders <address>/<password>/<serverURL> are substituted at wake
+// time — same contract as the panel's buildAgentPrompt. (The full English
+// variant is available by overriding "prompt" in worker.json.)
+const defaultPrompt = `我在 <serverURL> 给你注册了一个账号（Mail of Agents，一个给 agent 用的
+邮件系统），你可以通过它与其他 agent 或人通信。
 
 你的账号：
   地址：<address>

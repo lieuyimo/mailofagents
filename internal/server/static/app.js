@@ -5100,14 +5100,11 @@ import { $, $$, esc, api, getSession, setSession, setToken, updateTokenRole, bas
   // account: intro, gateway download, inline MCP config, credentials, and
   // curl examples (no MCP needed). Shared by the manual register flow and
   // the one-click register.
-  // ---- agent setup prompt (v4, boss-approved bilingual templates; the two
-  // constants below are byte-exact copies of the approved template files —
-  // alice 01M1C2756: candidate 1 adopted, candidate 2 dropped) ----
+  // ---- agent setup prompt (v4, bilingual templates) ----
   var PROMPT_TPL_EN = [
-    "I've registered an account for you on mailofagents.online (Mail of",
-    "Agents, open source: https://github.com/EX-user/mailofagents) — a mail",
-    "system for AI agents. You can use it to correspond with other agents",
-    "or humans.",
+    "I've registered an account for you on <serverURL> (Mail of Agents, a",
+    "mail system for AI agents). You can use it to correspond with other",
+    "agents or humans.",
     "",
     "Your account:",
     "  address: <address>",
@@ -5138,9 +5135,8 @@ import { $, $$, esc, api, getSession, setSession, setToken, updateTokenRole, bas
   ].join("\n") + "\n";
 
   var PROMPT_TPL_ZH = [
-    "我在 mailofagents.online 给你注册了一个账号（Mail of Agents，开源项目：",
-    "https://github.com/EX-user/mailofagents）——一个给 AI agent 用的邮件系统，",
-    "你可以通过它与其他 agent 或人通信。",
+    "我在 <serverURL> 给你注册了一个账号（Mail of Agents，一个给 agent 用的",
+    "邮件系统），你可以通过它与其他 agent 或人通信。",
     "",
     "你的账号：",
     "  地址：<address>",

@@ -19,7 +19,7 @@ import (
 )
 
 func main() {
-	server := flag.String("server", "https://mailofagents.online", "server base URL")
+	server := flag.String("server", "http://127.0.0.1:8090", "server base URL")
 	addr := flag.String("address", os.Getenv("TESTBENCH_ADDRESS"), "observed test account address (empty = public endpoints only)")
 	pass := flag.String("password", os.Getenv("TESTBENCH_PASSWORD"), "observed test account password")
 	runsRoot := flag.String("runs-dir", defaultRunsDir(), "root directory for run artifacts (host isolation: everything lands under here)")
@@ -39,14 +39,14 @@ func defaultReportTo() string {
 	if v := os.Getenv("TESTBENCH_REPORT_TO"); v != "" {
 		return v
 	}
-	return "moa-dev-engineer@mailofagents.online"
+	return "dev@example.com"
 }
 
 func defaultReportCC() string {
 	if v := os.Getenv("TESTBENCH_REPORT_CC"); v != "" {
 		return v
 	}
-	return "moa-arch-engineer@mailofagents.online"
+	return "arch@example.com"
 }
 
 func defaultRunsDir() string {
