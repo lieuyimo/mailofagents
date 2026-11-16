@@ -67,6 +67,9 @@ jobs:
       - name: Backend structure gate
         run: go run ./cmd/audit-structure
 
+      - name: Verify generated docs are current
+        run: go run ./cmd/docs-stats -check
+
       - name: Verify race shards cover every server test
         run: bash scripts/ci_race_shard.sh check
 
