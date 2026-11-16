@@ -19,15 +19,27 @@ status=0
 for f in "$STATIC"/*.js; do
   base=$(basename "$f")
   [[ "$base" =~ $SKIP_RE ]] && continue
-  # Collect static import specifiers (import ... from "...").
-  grep -oE 'from[[:space:]]+"[^"]+"' "$f" 2>/dev/null | sed -E 's/from[[:space:]]+"([^"]+)"/\1/' | while read -r spec; do
+  # Collect static import specifiers from real import statements only.
+  # Anchoring matters: the old unanchored `from "..."` regex also matched
+  # prose in comments (e.g. `indistinguishable from "the list was cleared"`).
+  specs=$(
+    grep -nE '^[[:space:]]*import\b' "$f" 2>/dev/null \
+      | grep -oE 'from[[:space:]]+["'"'"'][^"'"'"']+["'"'"']' \
+      | sed -E 's/from[[:space:]]+["'"'"']([^"'"'"']+)["'"'"']/\1/'
+    grep -nE '^[[:space:]]*import[[:space:]]+["'"'"'][^"'"'"']+["'"'"']' "$f" 2>/dev/null \
+      | sed -E 's/.*import[[:space:]]+["'"'"']([^"'"'"']+)["'"'"'].*/\1/'
+  )
+  while IFS= read -r spec; do
+    [ -z "$spec" ] && continue
     case "$spec" in
       ./core.js|"core.js") : ;; # the one allowed dependency
-      *) echo "VIOLATION: $base imports \"$spec\" (only ./core.js is allowed)"; exit 1 ;;
+      *) echo "VIOLATION: $base imports \"$spec\" (only ./core.js is allowed)"; status=1 ;;
     esac
-  done || status=1
-  # Dynamic import() must also target core only.
-  if grep -nE 'import\(["'"'"'][^)"'"'"']+["'"'"']\)' "$f" | grep -v './core.js' | grep -q .; then
+  done <<< "$specs"
+  # Dynamic import() must also target core only; ignore commented-out lines.
+  if grep -nE 'import\(["'"'"'][^)"'"'"']+["'"'"']\)' "$f" 2>/dev/null \
+      | grep -vE '^[[:space:]]*[0-9]+:[[:space:]]*//' \
+      | grep -v './core.js' | grep -q .; then
     echo "VIOLATION: $base uses dynamic import() beyond core.js"
     status=1
   fi
