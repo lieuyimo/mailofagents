@@ -17,7 +17,7 @@ import (
 // temp store (admin bootstrapped, domain test.example).
 func newRegisterTestServer(t *testing.T) (*httptest.Server, *store.Store) {
 	t.Helper()
-	st, err := store.Open(filepath.Join(t.TempDir(), "test.db"))
+	st, err := store.Open(filepath.Join(t.TempDir(), "test.db"), testStoreOptions()...)
 	if err != nil {
 		t.Fatalf("open store: %v", err)
 	}

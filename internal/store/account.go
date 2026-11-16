@@ -13,6 +13,10 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// defaultBcryptCost is the production password hash cost. The store's own
+// tests lower it in TestMain; server tests pass WithBcryptCost explicitly.
+var defaultBcryptCost = bcrypt.DefaultCost
+
 // ErrAccountExists is returned when CreateAccount is called for an address
 // that already exists.
 var ErrAccountExists = errors.New("account already exists")
@@ -113,7 +117,7 @@ func (s *Store) createAccountWithPassword(name, domain string, isAdmin bool, pas
 	// Preserve the caller's original casing as the display local-part (V06
 	// ruling): key stays lowercase, the user sees their own spelling on the
 	// settings page. Only set when the caller actually used uppercase.
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), s.bcryptCost)
 	if err != nil {
 		return nil, fmt.Errorf("hash password: %w", err)
 	}
@@ -221,7 +225,7 @@ func (s *Store) ResetPassword(address, newPassword string) error {
 	if newPassword == "" {
 		return fmt.Errorf("empty password")
 	}
-	hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), s.bcryptCost)
 	if err != nil {
 		return fmt.Errorf("hash password: %w", err)
 	}
@@ -344,7 +348,7 @@ func (s *Store) ChangePassword(address, oldPassword, newPassword string) error {
 		}
 		return ErrWrongPassword
 	}
-	hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), s.bcryptCost)
 	if err != nil {
 		return fmt.Errorf("hash password: %w", err)
 	}
@@ -527,7 +531,7 @@ func (s *Store) EnsureAdmin(address, password string) error {
 		return err
 	}
 
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), s.bcryptCost)
 	if err != nil {
 		return fmt.Errorf("hash admin password: %w", err)
 	}
@@ -625,7 +629,7 @@ func (s *Store) RegisterTeam(username, domain, password string, teamSize int, me
 		return nil, nil, fmt.Errorf("members length %d != team_size %d", len(memberNames), teamSize)
 	}
 	ownerAddr := strings.ToLower(username + "@" + domain)
-	ownerHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	ownerHash, err := bcrypt.GenerateFromPassword([]byte(password), s.bcryptCost)
 	if err != nil {
 		return nil, nil, fmt.Errorf("hash password: %w", err)
 	}
@@ -706,7 +710,7 @@ func (s *Store) RegisterTeam(username, domain, password string, teamSize int, me
 				return err
 			}
 			pw := generatePassword(24)
-			hash, err := bcrypt.GenerateFromPassword([]byte(pw), bcrypt.DefaultCost)
+			hash, err := bcrypt.GenerateFromPassword([]byte(pw), s.bcryptCost)
 			if err != nil {
 				return err
 			}

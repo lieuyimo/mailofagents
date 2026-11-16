@@ -18,7 +18,7 @@ import (
 // newTokenTestServer boots an initialized server with a regular account.
 func newTokenTestServer(t *testing.T) (*httptest.Server, string) {
 	t.Helper()
-	st, err := store.Open(filepath.Join(t.TempDir(), "test.db"))
+	st, err := store.Open(filepath.Join(t.TempDir(), "test.db"), testStoreOptions()...)
 	if err != nil {
 		t.Fatalf("open store: %v", err)
 	}

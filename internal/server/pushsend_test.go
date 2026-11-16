@@ -51,7 +51,7 @@ func (c *capturedPushes) snapshot() []capturedPush {
 
 func newPushSendTestServer(t *testing.T) (*Server, *store.Store, *capturedPushes) {
 	t.Helper()
-	st, err := store.Open(filepath.Join(t.TempDir(), "test.db"))
+	st, err := store.Open(filepath.Join(t.TempDir(), "test.db"), testStoreOptions()...)
 	if err != nil {
 		t.Fatalf("open store: %v", err)
 	}

@@ -17,7 +17,7 @@ import (
 
 func newPushTestServer(t *testing.T, pubkey string) (*httptest.Server, string, *store.Store) {
 	t.Helper()
-	st, err := store.Open(filepath.Join(t.TempDir(), "test.db"))
+	st, err := store.Open(filepath.Join(t.TempDir(), "test.db"), testStoreOptions()...)
 	if err != nil {
 		t.Fatalf("open store: %v", err)
 	}
