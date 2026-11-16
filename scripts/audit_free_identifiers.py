@@ -11,7 +11,7 @@ code path runs.
 Discriminator (precise, low-noise): flag any identifier that is
   FREE in module A  (referenced, not defined in A, not a core export,
                      not a known browser/JS builtin)
-  and DEFINED in module B != A  (as function/let/const/var)
+  and DEFINED **at module scope** in module B != A
 That signature = a cross-module closure leak; single-module free ids
 (property names, strings) stay silent.
 
@@ -59,7 +59,10 @@ arrayBuffer headers ok url method credentials mode cache signal""".split())
 # spots, NOT leaks: `days` = graphPrefs object key + windowLabel(days)
 # named-fn param (params of NAMED functions aren't captured); `folder` =
 # event-detail object key; `i`/`o` = i18n placeholder-var object keys.
-NOISE_BASELINE = set("""account active add btn c card cls dir domain el f files fn idx
+# 2026-11-16: +h — overview.js has its own `var h` inside fitLinksGraph, but
+# the comment/string stripping swallows that region, so the defined-set misses
+# it and the module-level `var h` in manage.js looks like a leak. Not one.
+NOISE_BASELINE = set("""account active add btn c card cls dir domain el f files fn h idx
 k loadAudit loadInbox me msg n panel path pick prefs preview pv s sel tab ts toggle
 unread v days folder i o""".split())
 
@@ -82,20 +85,47 @@ def defs(code):
         d |= {p.strip() for p in m.split(",") if p.strip()}
     for m in re.findall(r"\bfunction\s*\(([^)]*)\)", code):
         d |= {p.strip() for p in m.split(",") if p.strip()}
+    # Named functions too (`function foo(a, b)`), a common def the old
+    # extraction missed and then reported as a free identifier.
+    for m in re.findall(r"\bfunction\s+\w+\s*\(([^)]*)\)", code):
+        d |= {p.strip() for p in m.split(",") if p.strip()}
     d |= set(re.findall(r"\bcatch\s*\(\s*(\w+)\s*\)", code))
     return d
 
 
-def defs_exported(code):
-    """B-side signature set: only names that plausibly live at module scope
-    (function names + simple var/let/const declarations). Params and
-    destructuring are NOT module-scope exports."""
-    d = set(re.findall(r"\b(?:async\s+)?function\s*\*?\s+(\w+)", code))
-    d |= set(re.findall(r"\b(?:const|let|var)\s+(\w+)", code))
-    return d
+def module_scope_defs(code):
+    """B-side signature set: names declared at the module's top level.
+
+    Scanning the whole file (the previous behaviour) treated locals inside
+    any function in module B as module-scope exports, so ordinary names like
+    `div` or `bar` produced dozens of false "closure leak" hits.
+
+    The frontend's style is consistent: a module-level declaration starts at
+    column 0. Anchoring to line starts is both simpler and more robust than
+    brace counting, which regex literals and nested templates can throw off.
+    """
+    names = set()
+    # 0 spaces = classic/top-level (core.js, wizard.js); 2 spaces = the body
+    # of the per-module IIFE. Nested function locals start at 4+ spaces.
+    decl = re.compile(
+        r"^ {0,2}(?:export\s+)?(?:default\s+)?(?:async\s+)?"
+        r"(?:function\s*\*?\s+(\w+)|class\s+(\w+)|(?:const|let|var)\s+(\w+))",
+        re.M,
+    )
+    for m in decl.finditer(code):
+        names.add(next(g for g in m.groups() if g))
+    for m in re.finditer(r"^ {0,2}(?:export\s+)?(?:const|let|var)\s*\{([^}]+)\}", code, re.M):
+        for part in m.group(1).split(","):
+            name = part.strip().split(":")[0].strip()
+            if re.fullmatch(r"[A-Za-z_$][\w$]*", name):
+                names.add(name)
+    return names
 
 
 def used(code):
+    # Object-literal keys (`{ cap: ... }`, `, cap: ...`) are labels, not
+    # variable references; drop them before collecting identifiers.
+    code = re.sub(r"([{,]\s*)[A-Za-z_$][\w$]*\s*:", r"\1", code)
     # The lookbehind kills property accesses (x.msg) and name tails.
     return set(re.findall(r"(?<![.\w$])([A-Za-z_$][\w$]*)", code))
 
@@ -110,7 +140,7 @@ def main():
         if not base.endswith(".js") or SKIP_RE.match(base):
             continue
         code = strip_noise(io.open(os.path.join(STATIC, base), encoding="utf-8").read())
-        modules[base] = (defs(code), defs_exported(code), used(code))
+        modules[base] = (defs(code), module_scope_defs(code), used(code))
 
     hits = []
     for base, (defined, _dexp, used_ids) in modules.items():
