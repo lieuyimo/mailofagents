@@ -16,8 +16,8 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"math"
 	"sort"
-	"time"
 
 	bolt "go.etcd.io/bbolt"
 )
@@ -43,14 +43,15 @@ func pushKey(id int64) []byte {
 // Title and BodyMD are required; Version is capped to keep the modal
 // headline sane.
 func (s *Store) UpsertPush(p PushRecord) (PushRecord, error) {
-	if p.ID == 0 {
-		p.ID = time.Now().UnixMilli()
+	autoID := p.ID == 0
+	if autoID {
+		p.ID = s.now().UnixMilli()
 	}
 	if p.ID < 0 {
 		return PushRecord{}, fmt.Errorf("negative push id")
 	}
 	if p.Published && p.PublishedAt == 0 {
-		p.PublishedAt = time.Now().Unix()
+		p.PublishedAt = s.now().Unix()
 	}
 	if len(p.Title) == 0 {
 		return PushRecord{}, fmt.Errorf("push title required")
@@ -65,11 +66,33 @@ func (s *Store) UpsertPush(p PushRecord) (PushRecord, error) {
 		return PushRecord{}, fmt.Errorf("push body too long (max 10000 chars)")
 	}
 	err := s.db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket(bUpdates)
+		if autoID {
+			// Auto ids are unix-milli and must be strictly greater than
+			// every existing id: (a) two pushes in the same millisecond
+			// would otherwise share a key and silently overwrite one
+			// another, and (b) after a backwards clock step a smaller id
+			// would sort below existing announcements, so no account's
+			// LastReadPushID watermark could ever mark it unread.
+			// The maximum key is authoritative (bbolt serializes writers),
+			// so jumping above it is collision-free. Explicit ids keep
+			// their in-place update semantics.
+			var maxID int64
+			if k, _ := b.Cursor().Last(); len(k) == 8 {
+				maxID = int64(binary.BigEndian.Uint64(k))
+			}
+			if p.ID <= maxID {
+				if maxID == math.MaxInt64 {
+					return fmt.Errorf("push id space exhausted")
+				}
+				p.ID = maxID + 1
+			}
+		}
 		val, err := json.Marshal(p)
 		if err != nil {
 			return err
 		}
-		return tx.Bucket(bUpdates).Put(pushKey(p.ID), val)
+		return b.Put(pushKey(p.ID), val)
 	})
 	if err != nil {
 		return PushRecord{}, err
