@@ -3,6 +3,7 @@ package store
 import (
 	"errors"
 	"testing"
+	"time"
 )
 
 func newUpdatesStore(t *testing.T) *Store {
@@ -77,6 +78,67 @@ func TestUpdatesDraftVisibility(t *testing.T) {
 	}
 	if republished.ID != draftID || republished.PublishedAt == 0 {
 		t.Fatalf("republished = %+v; want same id + stamped PublishedAt", republished)
+	}
+}
+
+// TestUpsertPushAutoIDUniqueWithinMillisecond pins the auto-id collision
+// guard: ids are minted from unix-milli, so two creates in the same
+// millisecond previously shared a key and the second silently overwrote the
+// first. Auto ids must probe forward instead.
+func TestUpsertPushAutoIDUniqueWithinMillisecond(t *testing.T) {
+	s := newUpdatesStore(t)
+	fixed := time.Unix(1730000000, 0)
+	s.now = func() time.Time { return fixed }
+
+	first, err := s.UpsertPush(PushRecord{Title: "first", BodyMD: "b", Published: true})
+	if err != nil {
+		t.Fatalf("upsert first: %v", err)
+	}
+	second, err := s.UpsertPush(PushRecord{Title: "second", BodyMD: "b", Published: true})
+	if err != nil {
+		t.Fatalf("upsert second: %v", err)
+	}
+	if first.ID == second.ID {
+		t.Fatalf("same-millisecond auto ids collided: %d", first.ID)
+	}
+	if second.ID <= first.ID {
+		t.Fatalf("auto ids not increasing: first=%d second=%d", first.ID, second.ID)
+	}
+	all, err := s.ListPushes(true)
+	if err != nil || len(all) != 2 {
+		t.Fatalf("list = %v, %v; want 2 rows", all, err)
+	}
+	latest, ok, err := s.LatestPublishedPush()
+	if err != nil || !ok || latest.Title != "second" {
+		t.Fatalf("latest = %v, %v, %v; want second", latest, ok, err)
+	}
+}
+
+// TestUpsertPushAutoIDAboveExistingAfterClockBack pins the second half of the
+// auto-id rule: after a backwards clock step, a freshly minted id must still
+// exceed every stored id. Otherwise it would sort below existing
+// announcements and no account watermark could ever mark it unread.
+func TestUpsertPushAutoIDAboveExistingAfterClockBack(t *testing.T) {
+	s := newUpdatesStore(t)
+	s.now = func() time.Time { return time.Unix(1600000000, 0) } // "now" is in the past
+	const futureID int64 = 1700000000000
+	if _, err := s.UpsertPush(PushRecord{ID: futureID, Title: "future", BodyMD: "b", Published: true}); err != nil {
+		t.Fatalf("seed future: %v", err)
+	}
+
+	p, err := s.UpsertPush(PushRecord{Title: "new", BodyMD: "b", Published: true})
+	if err != nil {
+		t.Fatalf("upsert new: %v", err)
+	}
+	if p.ID != futureID+1 {
+		t.Fatalf("auto id = %d, want %d (above the existing max)", p.ID, futureID+1)
+	}
+	if n, err := s.CountPublishedAfter(futureID); err != nil || n != 1 {
+		t.Fatalf("count after old watermark = %d, %v; want 1", n, err)
+	}
+	latest, ok, err := s.LatestPublishedPush()
+	if err != nil || !ok || latest.Title != "new" {
+		t.Fatalf("latest = %v, %v, %v; want the new push", latest, ok, err)
 	}
 }
 
