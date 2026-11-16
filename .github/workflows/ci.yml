@@ -49,11 +49,20 @@ jobs:
       - name: Backend structure gate
         run: go run ./cmd/audit-structure
 
+      - name: Verify race shards cover every server test
+        run: bash scripts/ci_race_shard.sh check
+
   race:
-    name: race (store + server)
+    name: race (${{ matrix.shard }})
     runs-on: ubuntu-latest
-    # Server tests take ~13 min under -race on a developer machine.
-    timeout-minutes: 40
+    # One combined job spent ~9 min, almost all in server's real-time waits
+    # under -race. Split by feature (scripts/ci_race_shard.sh) so the shards
+    # run in parallel; the slowest shard is the critical path.
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [store, auth, mail, org, ops]
     steps:
       - uses: actions/checkout@v4
 
@@ -61,4 +70,10 @@ jobs:
         run: go version
 
       - name: Race detector
-        run: go test -race ./internal/store ./internal/server
+        run: |
+          if [ "${{ matrix.shard }}" = "store" ]; then
+            go test -race ./internal/store
+          else
+            pattern=$(bash scripts/ci_race_shard.sh "${{ matrix.shard }}")
+            go test -race ./internal/server -run "$pattern"
+          fi
