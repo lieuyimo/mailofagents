@@ -620,10 +620,13 @@ func TestBoardMineAndQuota(t *testing.T) {
 		`{"name":"first","split_codes":true}`, &first); code != 201 {
 		t.Fatalf("create = %d", code)
 	}
+	// Fill the rest of the quota through the store, not 199 more authenticated
+	// HTTP calls: each call runs bcrypt, which dominates this test under
+	// -race (271s alone before this change). The HTTP create path is still
+	// exercised at the quota boundary below.
 	for i := 0; i < store.BoardsPerAccount-1; i++ {
-		if code := apiCall(t, "POST", ts.URL, "/api/boards", addr, pw,
-			fmt.Sprintf(`{"name":"b%d"}`, i), nil); code != 201 {
-			t.Fatalf("create %d = %d", i, code)
+		if _, err := st.CreateBoard(addr, fmt.Sprintf("b%d", i), store.BoardLineCountDefault, false); err != nil {
+			t.Fatalf("seed board %d: %v", i, err)
 		}
 	}
 	if code := apiCall(t, "POST", ts.URL, "/api/boards", addr, pw, `{"name":"over"}`, nil); code != http.StatusConflict {
