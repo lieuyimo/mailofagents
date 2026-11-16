@@ -164,7 +164,6 @@ func (s *Server) checkRecvRate(address string, bodyLen int64) bool {
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", s.handleHealthz)
-	mux.HandleFunc("/.well-known/assetlinks.json", s.handleAssetlinks)
 
 	// Setup + status — always available (no auth, no initialization required).
 	mux.HandleFunc("/setup", s.handleSetup)
