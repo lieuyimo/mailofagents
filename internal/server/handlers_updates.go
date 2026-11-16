@@ -12,22 +12,50 @@ package server
 //   PUT  /api/admin/updates   (admin) {"id"?,"version","title","body_md","published"} -> {"ok","push"}
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/lieuyimo/mailofagents/internal/store"
 )
 
-// defaultPushSeed is the first-period push copy, approved verbatim by boss
-// (alice relay 0922: "一字勿改"; 发布时点=弹窗上线). Seeded once on first boot
-// with the data plane; the middle dot + space lines are the modal's
-// hanging-indent item syntax.
+// The upstream seed shipped before the independent version line existed.
+// Keep its exact copy so untouched installations can be migrated in place.
+const (
+	legacyPushVersion = "v0.3.1"
+	legacyPushTitle   = "Mail of Agents v0.3.1"
+	legacyPushBody    = "· 优化连接图渲染逻辑及控件显示\n· worker: 终端窗口缩放即时重绘，不再错位花屏；增加鼠标交互控件\n· worker 心跳状态接入概览"
+)
+
+// defaultPushSeed is the first-boot announcement for this repository. The
+// middle dot + space lines are the modal's hanging-indent item syntax.
 func defaultPushSeed() []store.PushRecord {
 	return []store.PushRecord{{
-		Version:   "v0.3.1",
-		Title:     "Mail of Agents v0.3.1",
-		BodyMD:    "· 优化连接图渲染逻辑及控件显示\n· worker: 终端窗口缩放即时重绘，不再错位花屏；增加鼠标交互控件\n· worker 心跳状态接入概览",
+		Version:   "v0.1.0",
+		Title:     "Mail of Agents v0.1.0",
+		BodyMD:    "· 独立维护版本：版本线从 v0.1.0 重新开始\n· 修复同毫秒 ULID 排序与 push ID 覆盖，列表与分页稳定\n· gateway 认证边界测试 + CI（build 与 5 个 race 分片）",
 		Published: true,
 	}}
+}
+
+// migrateLegacyPushSeed replaces the untouched upstream seed that existing
+// installations still carry. Anything else — admin-curated copy, multiple
+// pushes, drafts-only — is left alone.
+func migrateLegacyPushSeed(st *store.Store) {
+	pushes, err := st.ListPushes(true)
+	if err != nil || len(pushes) != 1 {
+		return
+	}
+	old := pushes[0]
+	if old.Version != legacyPushVersion || old.Title != legacyPushTitle || old.BodyMD != legacyPushBody {
+		return
+	}
+	seed := defaultPushSeed()[0]
+	seed.ID = old.ID
+	seed.Published = old.Published
+	seed.PublishedAt = old.PublishedAt
+	if _, err := st.UpsertPush(seed); err != nil {
+		log.Printf("updates: migrate legacy seed: %v", err)
+	}
 }
 
 // handleUpdatesLatest answers the modal's once-per-overview-entry query.

@@ -16,7 +16,7 @@ pattern_for() {
     auth) echo '^(TestAdmin|TestAvatar|TestClientIPXFF|TestNames|TestOnboarding|TestPassword|TestProfile|TestPublic|TestRegisterPasswordless|TestRegLimiter|TestTokenAuth)' ;;
     mail) echo '^(TestAttachment|TestInbox|TestRecipientLimits|TestSearch|TestSentStatus|TestThread|TestWhitelist)' ;;
     org)  echo '^(TestBoard|TestLivenessPull|TestPrefsLiveness|TestRegisterSubordinate|TestSub)' ;;
-    ops)  echo '^(TestOptions|TestPush|TestSelfDescribe|TestSiteCopy|TestStaticCache|TestUpdates|TestVAPID|TestWorker)' ;;
+    ops)  echo '^(TestLegacyPushSeed|TestOptions|TestPush|TestSelfDescribe|TestSiteCopy|TestStaticCache|TestUpdates|TestVAPID|TestWorker)' ;;
     *) return 2 ;;
   esac
 }

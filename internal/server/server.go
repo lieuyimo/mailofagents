@@ -97,14 +97,16 @@ func New(s *store.Store, a *audit.Store, cfg *config.Config) *Server {
 		boardCodeRate:  newRegLimiter(time.Minute),
 		boardBoardRate: newRegLimiter(time.Minute),
 	}
-	// First-period update push (boss-approved copy, verbatim): seeded once
-	// when the data plane first boots; a no-op once any published push
-	// exists, so admin content is never overwritten.
+	// First update push for this version line: seeded once when the data
+	// plane first boots; a no-op once any published push exists, so admin
+	// content is never overwritten. The legacy upstream seed is migrated in
+	// place by the follow-up call.
 	if n, err := server.store.EnsureSeedPushes(defaultPushSeed()); err != nil {
 		log.Printf("updates: seed pushes: %v", err)
 	} else if n > 0 {
 		log.Printf("updates: seeded %d push(es)", n)
 	}
+	migrateLegacyPushSeed(server.store)
 	return server
 }
 

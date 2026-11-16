@@ -5,11 +5,13 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+
+	"github.com/lieuyimo/mailofagents/internal/store"
 )
 
-// TestUpdatesLatestAndRead pins the modal contract end to end: the seed push
-// (boss-approved copy, verbatim) is unread on first query, the exact title
-// and body reach the client unmodified, and acknowledging clears unread.
+// TestUpdatesLatestAndRead pins the modal contract end to end: the seeded
+// push is unread on first query, its title and body reach the client
+// unmodified, and acknowledging clears unread.
 func TestUpdatesLatestAndRead(t *testing.T) {
 	ts, _ := newRegisterTestServer(t)
 
@@ -37,15 +39,15 @@ func TestUpdatesLatestAndRead(t *testing.T) {
 		t.Fatalf("first unread = %v, want true", first["unread"])
 	}
 	push, _ := first["push"].(map[string]any)
-	if push["version"] != "v0.3.1" {
-		t.Fatalf("version = %v, want v0.3.1", push["version"])
+	seed := defaultPushSeed()[0]
+	if push["version"] != seed.Version {
+		t.Fatalf("version = %v, want %s", push["version"], seed.Version)
 	}
-	if push["title"] != "Mail of Agents v0.3.1" {
-		t.Fatalf("title = %v, want verbatim boss copy", push["title"])
+	if push["title"] != seed.Title {
+		t.Fatalf("title = %v, want %s", push["title"], seed.Title)
 	}
-	wantBody := "· 优化连接图渲染逻辑及控件显示\n· worker: 终端窗口缩放即时重绘，不再错位花屏；增加鼠标交互控件\n· worker 心跳状态接入概览"
-	if push["body_md"] != wantBody {
-		t.Fatalf("body_md = %q, want verbatim boss copy", push["body_md"])
+	if push["body_md"] != seed.BodyMD {
+		t.Fatalf("body_md = %q, want the seeded copy", push["body_md"])
 	}
 
 	// Ack and re-query: unread flips false, figures drop to zero.
@@ -213,4 +215,53 @@ func itoa64(v int64) string {
 		b[i] = '-'
 	}
 	return string(b[i:])
+}
+
+// TestLegacyPushSeedMigrated rewrites the exact upstream seed that older
+// databases carry, keeping its id so read watermarks stay valid.
+func TestLegacyPushSeedMigrated(t *testing.T) {
+	st, err := store.Open(t.TempDir() + "/test.db")
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	t.Cleanup(func() { st.DB().Close() })
+	old, err := st.UpsertPush(store.PushRecord{
+		Version: legacyPushVersion, Title: legacyPushTitle, BodyMD: legacyPushBody, Published: true,
+	})
+	if err != nil {
+		t.Fatalf("seed legacy: %v", err)
+	}
+	migrateLegacyPushSeed(st)
+	latest, ok, err := st.LatestPublishedPush()
+	if err != nil || !ok {
+		t.Fatalf("latest: ok=%v err=%v", ok, err)
+	}
+	seed := defaultPushSeed()[0]
+	if latest.ID != old.ID || latest.Version != seed.Version || latest.Title != seed.Title || latest.BodyMD != seed.BodyMD {
+		t.Fatalf("migrated = %+v, want id %d with the v0.1.0 copy", latest, old.ID)
+	}
+}
+
+// TestLegacyPushSeedLeavesCuratedContent: exact-match only. Any edit means an
+// admin owns the copy, so the migration must not touch it.
+func TestLegacyPushSeedLeavesCuratedContent(t *testing.T) {
+	st, err := store.Open(t.TempDir() + "/test.db")
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	t.Cleanup(func() { st.DB().Close() })
+	curated, err := st.UpsertPush(store.PushRecord{
+		Version: legacyPushVersion, Title: legacyPushTitle, BodyMD: "· 管理员改过", Published: true,
+	})
+	if err != nil {
+		t.Fatalf("seed curated: %v", err)
+	}
+	migrateLegacyPushSeed(st)
+	got, ok, err := st.GetPush(curated.ID)
+	if err != nil || !ok {
+		t.Fatalf("get: ok=%v err=%v", ok, err)
+	}
+	if got.BodyMD != "· 管理员改过" {
+		t.Fatalf("curated copy overwritten: %+v", got)
+	}
 }
