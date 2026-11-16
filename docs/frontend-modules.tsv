@@ -1,0 +1,8 @@
+core.js	唯一共享层：DOM/api/session/toast（无状态）
+app.js	入口壳：路由/登录/事件中枢/游客页组
+compose.js	写信域（irt 锚点、cc、收件人 autocomplete）
+manage.js	查信+从属+审计域（browse 列表/详情）
+overview.js	概览+连接图（管理视图）
+forest.js	话题森林（d3-hierarchy 渲染）
+threads.js	话题/线程列表
+wizard.js	首次启动向导
