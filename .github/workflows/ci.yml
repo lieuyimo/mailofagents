@@ -1,0 +1,56 @@
+name: ci
+
+# Tests on every push to main and every pull request. Release artifacts stay
+# tag-only in release.yml; this workflow never publishes anything.
+#
+# Like release.yml, we use the runner-preinstalled Go instead of
+# actions/setup-go: its codeload tarball download was persistently
+# 429-rate-limited in this repo (release.yml §"Go toolchain"). `go version`
+# keeps the toolchain actually used visible in the log.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A new push supersedes the in-flight run for the same ref.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test:
+    name: build + vet + test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Go toolchain (runner-preinstalled)
+        run: go version
+
+      - name: Build
+        run: go build ./...
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test ./...
+
+  race:
+    name: race (store + server)
+    runs-on: ubuntu-latest
+    # Server tests take ~13 min under -race on a developer machine.
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Go toolchain (runner-preinstalled)
+        run: go version
+
+      - name: Race detector
+        run: go test -race ./internal/store ./internal/server
