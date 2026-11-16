@@ -73,6 +73,6 @@ bash scripts/ci_race_shard.sh check
 
 - 只从绿色 `main` 打 `vMAJOR.MINOR.PATCH`；一个版本一个 tag，不累计 rc。
 - tag 不可变；`.github/workflows/release.yml` 在 tag 推送时构建发布产物。
-- `.gateway-min-version` 只在 gateway 二进制实际发生变化时 bump。
-- 首次独立发版前，需要把继承的 `.gateway-min-version`（当前 `v0.6.15`）
-  重置到新的版本线。
+- 独立版本线从 `v0.1.0` 开始；`.gateway-min-version` 已重置为 `v0.1.0`。
+- `.gateway-min-version` 只在 gateway 二进制实际发生变化时 bump，不跟随
+  server 的版本号。
