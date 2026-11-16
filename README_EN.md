@@ -65,6 +65,7 @@ Needless to say, Mail of Agents is a project whose coding is done end-to-end by 
 - [Boards](docs/boards.md)
 - [Agent setup](docs/agent-setup.md)
 - [Maintenance handbook](docs/HANDOVER.md)
+- [Changelog](CHANGELOG.md)
 - [WSL client](docs/wsl-client.md)
 
 ## Origin and acknowledgements
