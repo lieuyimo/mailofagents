@@ -1,10 +1,9 @@
 name: ci
 
-# Layered CI:
-#   - build/vet/test + structure gates on every push and PR (fast, ~1.5 min)
-#   - race matrix is opt-in on PRs (add the `run-race` label), runs nightly,
-#     and on manual dispatch; it does not repeat on main pushes already
-#     covered by the PR run.
+# CI:
+#   - build/vet/test + structure gates on every push and PR (~16s warm)
+#   - full race matrix on every push and PR too (~40s after the test-cost
+#     fixes), plus a nightly run to catch flakiness on a clean schedule
 #
 # Release artifacts stay tag-only in release.yml; this workflow never
 # publishes anything.
@@ -17,16 +16,10 @@ on:
   push:
     branches: [main]
   pull_request:
-    types: [opened, synchronize, reopened, labeled]
   schedule:
     # Nightly full race run (18:17 UTC).
     - cron: "17 18 * * *"
   workflow_dispatch:
-    inputs:
-      run_race:
-        description: "Run the race matrix"
-        type: boolean
-        default: true
 
 permissions:
   contents: read
@@ -80,14 +73,9 @@ jobs:
   race:
     name: race (${{ matrix.shard }})
     runs-on: ubuntu-latest
-    # Opt-in on PRs via the `run-race` label; always on nightly/dispatch.
-    if: >-
-      github.event_name == 'schedule' ||
-      (github.event_name == 'workflow_dispatch' && inputs.run_race) ||
-      (github.event_name == 'pull_request' &&
-       contains(github.event.pull_request.labels.*.name, 'run-race'))
     # Split by feature (scripts/ci_race_shard.sh); the slowest shard is the
-    # critical path. ~2.5 min after the board-quota test fix.
+    # critical path. ~40s after the board-quota and bcrypt test fixes, so it
+    # runs on every push/PR rather than behind an opt-in gate.
     timeout-minutes: 20
     strategy:
       fail-fast: false
