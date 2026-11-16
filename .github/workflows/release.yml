@@ -127,12 +127,32 @@ jobs:
           pattern: workerpkg-*
           merge-multiple: true
 
+      # The changelog is the single source of release notes. A tag without a
+      # matching `## [X.Y.Z]` section fails the release rather than publishing
+      # an untitled one.
+      - name: Extract release notes from CHANGELOG
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          awk -v ver="$VERSION" '
+            BEGIN { gsub(/\./, "\\.", ver) }
+            $0 ~ "^## \\[" ver "\\]" { on = 1; print; next }
+            on && /^## \[/ { exit }
+            on { print }
+          ' CHANGELOG.md > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "ERROR: CHANGELOG.md has no section for ${VERSION}" >&2
+            exit 1
+          fi
+          echo "release notes: $(wc -c < release-notes.md) bytes"
+
       - name: Create release and upload all assets
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           TAG="${GITHUB_REF_NAME}"
+          NOTES_JSON=$(jq -Rs . < release-notes.md)
           echo "Publishing release ${TAG} with:"
           ls -1 agentmail-*
 
@@ -154,12 +174,19 @@ jobs:
               REL_ID=$(curl -fsSL -X POST \
                 -H "Authorization: Bearer ${GITHUB_TOKEN}" \
                 -H "Accept: application/vnd.github+json" \
-                -d "{\"tag_name\":\"${TAG}\",\"name\":\"${TAG}\",\"generate_release_notes\":false}" \
+                -d "{\"tag_name\":\"${TAG}\",\"name\":\"${TAG}\",\"generate_release_notes\":false,\"body\":${NOTES_JSON}}" \
                 "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases" \
                 | jq -r .id)
             fi
             [ -n "$REL_ID" ] && [ "$REL_ID" != "null" ] || { echo "no release id"; return 1; }
             echo "Release id: ${REL_ID}"
+
+            # Keep notes in sync on re-runs and on pre-existing releases.
+            curl -fsSL -X PATCH \
+              -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              -d "{\"body\":${NOTES_JSON}}" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/${REL_ID}" >/dev/null || true
 
             # 2. upload url (retry the GET a few times — the release may not be
             # readable for a couple of seconds after create).
@@ -221,11 +248,18 @@ jobs:
                    agentmail-worker-${TAG}-darwin-arm64.tar.gz )
           for i in 1 2 3 4 5 6; do
             # No -f: a transient 404/parse hiccup just means "not all present yet".
-            NAMES=$(curl -sSL "${AUTH[@]}" "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" | jq -r '.assets[].name' 2>/dev/null || true)
+            REL_JSON=$(curl -sSL "${AUTH[@]}" "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" 2>/dev/null || true)
+            NAMES=$(echo "$REL_JSON" | jq -r '.assets[].name' 2>/dev/null || true)
+            BODY_LEN=$(echo "$REL_JSON" | jq -r '.body // "" | length' 2>/dev/null || echo 0)
             MISSING=()
             for e in "${EXPECT[@]}"; do echo "$NAMES" | grep -qx "$e" || MISSING+=("$e"); done
+            if [ "$BODY_LEN" -eq 0 ]; then
+              echo "ERROR: release body is empty (no CHANGELOG notes)"
+              exit 1
+            fi
             if [ ${#MISSING[@]} -eq 0 ]; then
               echo "All ${#EXPECT[@]} assets present."
+              echo "Release notes: ${BODY_LEN} bytes."
               exit 0
             fi
             echo "attempt $i: still missing: ${MISSING[*]}"
