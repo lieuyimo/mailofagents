@@ -17,7 +17,7 @@ worker 的全部行为由一个 JSON 配置文件驱动。本页覆盖**每个�
 
 ```json
 {
-  "server": "https://mailofagents.online",
+  "server": "https://mail.example.com",
   "poll_interval_sec": 30,
   "timeout_sec": 300,
   "emergency": { "urgent_phrase": "urgent-interrupt" },
@@ -33,7 +33,7 @@ worker 的全部行为由一个 JSON 配置文件驱动。本页覆盖**每个�
 
 | 字段 | 默认 | 说明 |
 |---|---|---|
-| `server` | 无（必填） | 邮件服务基地址，如 `https://mailofagents.online`。worker 不代填——写错第一轮 poll 就会暴露 |
+| `server` | 无（必填） | 邮件服务基地址，如 `https://mail.example.com`。worker 不代填——写错第一轮 poll 就会暴露 |
 | `address` / `password` | 无（agent 必填） | 被守望账户的完整地址与密码（Basic 认证用**完整地址**，短址会 401） |
 | `cli` | `pi` | 适配器 id：`pi` / `opencode` / `claude` / `codex`（未认识的值按 pi 处理）。差异项见下节 |
 | `workdir` | 无（agent 应填） | 绑定工作目录：worker 唤醒 CLI 前 cd 到这里。这是 **agent 自己的地盘**（记忆文件、会话文件都在这），worker 不往里写东西——state 文件特意排除在外 |
