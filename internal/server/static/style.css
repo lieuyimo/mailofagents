@@ -1,0 +1,3665 @@
+:root {
+  --bg: #0f1115;
+  --panel: #1a1d24;
+  --panel-2: #22262f;
+  --text: #e6e6e6;
+  --muted: #9aa0aa;
+  --accent: #4a9eff;
+  --accent-2: #2f6fc0;
+  --border: #2c313a;
+  --success: #3fb950;
+  --error: #f85149;
+  /* Subordinate card surface: dark theme keeps the page-bg inset look. */
+  --sub-card-bg: var(--bg);
+  --sub-card-border: var(--border);
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f6f7f9;
+    --panel: #ffffff;
+    --panel-2: #eef1f5;
+    --text: #1f2328;
+    --muted: #52606d;
+    --accent: #2f6fc0;
+    --border: #ccd4de;
+    --success: #1a7f37;
+    --error: #cf222e;
+    /* Superior pick (variant B): pure white cards inside the white
+       container, slightly deeper border so they still read as cards. */
+    --sub-card-bg: #ffffff;
+    --sub-card-border: #c4ccd6;
+  }
+}
+
+/* ---- Manual theme overrides (v0.6.27 three-way switch) ----
+   html[data-theme] beats both :root blocks by specificity, so a user-picked
+   theme wins over prefers-color-scheme; no data-theme = system-follow. */
+html[data-theme="dark"] {
+  --bg: #0f1115;
+  --panel: #1a1d24;
+  --panel-2: #22262f;
+  --text: #e6e6e6;
+  --muted: #9aa0aa;
+  --accent: #4a9eff;
+  --accent-2: #2f6fc0;
+  --border: #2c313a;
+  --success: #3fb950;
+  --error: #f85149;
+  --sub-card-bg: var(--bg);
+  --sub-card-border: var(--border);
+}
+html[data-theme="light"] {
+  --bg: #f6f7f9;
+  --panel: #ffffff;
+  --panel-2: #eef1f5;
+  --text: #1f2328;
+  --muted: #52606d;
+  --accent: #2f6fc0;
+  --border: #ccd4de;
+  --success: #1a7f37;
+  --error: #cf222e;
+  --sub-card-bg: #ffffff;
+  --sub-card-border: #c4ccd6;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+header {
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+/* The address sits next to the title (one line on mobile too); the
+   auto margin keeps the controls pinned right on desktop. */
+/* Header v2 (superior 01M1B9GC1/01M1BADDW): the address + the three
+   pills form one right-hand group (header-right) that hugs the buttons;
+   the whole header is sticky. <=600px the group takes its own single row:
+   address left (ellipsis), pills right. */
+.header-right { display: flex; align-items: center; gap: 12px; margin-left: auto; }
+.header-right #whoami { margin-right: 0; }
+#app-header { position: sticky; top: 0; z-index: 40; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12); }
+.header-row #whoami { margin-right: 0; }
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+header h1 {
+  font-size: 18px;
+  margin: 0;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+.version-badge { font-size: 12px; font-weight: 400; color: var(--muted); }
+
+nav { display: flex; gap: 4px; }
+.tab {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--muted);
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.tab:hover { color: var(--text); background: var(--panel-2); }
+.tab.active { color: var(--text); background: var(--panel-2); border-color: var(--border); }
+
+main { max-width: 1100px; margin: 24px auto; padding: 0 20px; }
+h2 { font-size: 16px; margin: 0 0 16px; }
+#tab-inbox > h2, #tab-mail > h2, #tab-compose > h2 { display: none; }
+h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); margin: 24px 0 8px; }
+
+button.primary {
+  background: var(--accent);
+  color: #fff;
+  border: 1px solid var(--accent);
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+button.primary:hover { background: var(--accent-2); }
+
+button.row-action {
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--border);
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+button.row-action:hover { background: var(--panel-2); border-color: var(--accent); }
+/* boss PC round: compose reads as the row primary action; the gear opens
+   the mobile-style popover (remove + limits); badges trail the pill slot. */
+button.row-action.act-compose { background: var(--accent); color: #fff; border-color: var(--accent); border-radius: 999px; padding: 5px 18px; }
+button.row-action.act-compose:hover { background: var(--accent); filter: brightness(1.08); }
+button.row-gear { background: transparent; color: var(--muted, #888); border: 1px solid var(--border); border-radius: 999px; width: 30px; height: 30px; cursor: pointer; font-size: 15px; line-height: 1; }
+button.row-gear:hover { color: var(--accent); border-color: var(--accent); }
+.actions-cell { position: relative; }
+.gear-pop { position: absolute; right: 10px; top: calc(100% - 6px); z-index: 40; display: flex; flex-direction: column; gap: 6px; background: var(--panel, #fff); border: 1px solid var(--border); border-radius: 10px; padding: 8px; min-width: 132px; box-shadow: 0 6px 18px rgba(0,0,0,.18); }
+.gear-pop[hidden] { display: none; }
+.pc-badges { display: inline-flex; gap: 4px; margin-left: 6px; vertical-align: middle; }
+/* boss PC round: the row's latest-message line mirrors the mobile list item
+   (time dir . subject) - applyActivity patches it in place like on phones. */
+.pc-line3 { font-size: 12px; color: var(--muted, #888); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+tr.line3-row > td { padding: 0 12px 10px; border-top: none; }
+.pc-line3 .cl-none { color: var(--muted, #aaa); }
+/* ct-row: the address line is a block flex row (long marquee addresses must
+   not stack the badges/latest line on top of it). */
+
+button.row-action:disabled { opacity: 0.45; cursor: not-allowed; }
+
+tr.row-disabled td { opacity: 0.5; }
+.badge-disabled {
+  display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 3px;
+  background: var(--error); color: #fff; margin-left: 6px;
+  text-transform: uppercase; letter-spacing: 0.5px; vertical-align: middle;
+}
+.badge-admin {
+  display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 3px;
+  background: var(--accent, #6c6); color: #fff; margin-right: 4px;
+  text-transform: uppercase; letter-spacing: 0.5px; vertical-align: middle;
+}
+.badge-listed {
+  display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 3px;
+  background: #58a6ff; color: #fff; margin-right: 4px;
+  text-transform: uppercase; letter-spacing: 0.5px; vertical-align: middle;
+}
+/* Subordinate-account badge (v0.5.7): same family as admin/listed. */
+.badge-sub {
+  display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 3px;
+  background: #a371f7; color: #fff; margin-left: 4px;
+  text-transform: uppercase; letter-spacing: 0.5px; vertical-align: middle;
+}
+td.actions-cell { white-space: nowrap; }
+td.actions-cell button { margin-right: 4px; }
+td.actions-cell button:last-child { margin-right: 0; }
+/* Address + Signature columns: wide, single-line, horizontal-scroll on
+   overflow (long values stay readable instead of wrapping). Applies to
+   Accounts + Directory. */
+td.addr-cell,
+td.sig-cell {
+  white-space: nowrap;
+  max-width: 360px;
+}
+td.addr-cell { overflow-x: auto; }
+td.addr-cell::-webkit-scrollbar { height: 6px; }
+/* Signature cells (feedback round 2): over-wide signatures run as a
+   seamless ONE-WAY loop (superior: ping-pong still hides the tail) —
+   the track holds two copies, each with the same trailing gap, so
+   translateX(-50%) is exactly one period and the loop never jumps. */
+td.sig-cell { overflow: hidden; text-overflow: ellipsis; }
+.sig-dup { display: none; }
+td.sig-cell.marquee { text-overflow: clip; }
+td.sig-cell.marquee .sig-track {
+  display: inline-block; white-space: nowrap;
+  animation: sig-loop var(--wm-dur, 12s) linear infinite;
+}
+td.sig-cell.marquee .sig-track > span { padding-right: 48px; }
+td.sig-cell.marquee .sig-dup { display: inline; }
+@keyframes sig-loop {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+/* Inline marquee cells beyond table sigs (accounts one-screen plan):
+   .mq elements carry the same track/dup markup as td.sig-cell and join
+   the same measure-and-spin pass (maybeMarqueeSigs). */
+.mq { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; min-width: 0; }
+.mq.marquee { text-overflow: clip; }
+.mq.marquee .sig-track {
+  display: inline-block; white-space: nowrap;
+  animation: sig-loop var(--wm-dur, 12s) linear infinite;
+}
+.mq.marquee .sig-track > span { padding-right: 48px; }
+.mq.marquee .sig-dup { display: inline; }
+/* Address cells share the sig-cell overflow grammar now that they carry
+   the marquee track (single line + ellipsis fallback on PC too).
+   Scoped to the accounts table (superior 0.2.2 feedback point 1): as a
+   bare class rule it also hit the directory table, where table-layout
+   nowrap cells refuse to shrink — the address column ate the row and
+   squeezed the signature column into one-char-per-line stacks. */
+#accounts-table td.addr-cell { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 0019 (boss directive): PC table rows carry avatars too - the same
+   accAvatarHtml payload as the mobile list (hash->endpoint, else the
+   deterministic generator via avHydrate). Scoped to >800px: the mobile
+   card list already shows avatars, so the wrapper is inert there. */
+#accounts-table .im3-av { display: none; }
+@media (min-width: 801px) {
+  #accounts-table .im3-av { display: inline-flex; width: 28px; height: 28px; font-size: 13px; border-radius: 8px; }
+  #accounts-table .im3-av .cl-av-img { width: 28px; height: 28px; }
+  #accounts-table .pc-av-line { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; min-width: 0; vertical-align: middle; }
+  #accounts-table .pc-addr { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  #accounts-table td.addr-cell .sig-track { min-width: 0; }
+})
+.sub-sig { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.sub-list { min-width: 0; }
+/* Keep wrapping as a fallback for very narrow viewports. */
+@media (max-width: 520px) {
+  td.sig-cell { white-space: normal; word-break: break-all; }
+}
+
+.compose-form { display: flex; flex-direction: column; gap: 12px; max-width: 720px; }
+.compose-form label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+.compose-form input[type="text"],
+.compose-form input[type="password"],
+.compose-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-family: inherit;
+}
+.compose-form textarea { font-family: ui-monospace, "SF Mono", Consolas, monospace; resize: vertical; }
+.compose-form input[type="text"]:focus,
+.compose-form input[type="password"]:focus,
+.compose-form textarea:focus { outline: none; border-color: var(--accent); }
+.muted { color: var(--muted); font-size: 13px; }
+
+/* Compose To field with a dropdown picker button. */
+.to-field { position: relative; display: flex; align-items: stretch; gap: 0; }
+.to-field input[type="text"] { flex: 1 1 auto; }
+.to-dropdown-btn {
+  flex: 0 0 auto;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-left: none;
+  border-radius: 0 6px 6px 0;
+  padding: 0 10px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.to-dropdown-btn:hover { background: var(--border); }
+.compose-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin-top: 2px;
+  z-index: 20;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+}
+.compose-dropdown .dd-item {
+  padding: 6px 10px;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.compose-dropdown .dd-item:hover, .compose-dropdown .dd-item.active {
+  background: var(--border);
+}
+.compose-dropdown .dd-empty { padding: 6px 10px; font-size: 13px; color: var(--muted); }
+
+/* Compose thread view */
+.thread-list { margin-top: 8px; max-height: 420px; overflow-y: auto; }
+.thread-item {
+  padding: 8px 12px;
+  margin-bottom: 6px;
+  border-radius: 6px;
+  border-left: 3px solid var(--border);
+  background: var(--panel);
+  cursor: pointer;
+}
+/* Once expanded, the content area is NOT a click target (lets user select text). */
+.thread-full { cursor: text; }
+.thread-toggle { color: var(--accent); font-size: 11px; }
+.thread-action {
+  color: var(--accent);
+  font-size: 11px;
+  cursor: pointer;
+  margin-left: 8px;
+}
+.thread-action:hover { text-decoration: underline; }
+.thread-full { margin-top: 8px; }
+.thread-body {
+  white-space: pre-wrap; word-wrap: break-word;
+  font-family: ui-monospace, "SF Mono", Consolas, monospace;
+  font-size: 12px; margin: 0;
+  background: var(--panel-2); padding: 8px; border-radius: 4px;
+}
+.thread-out { border-left-color: var(--accent); }
+.thread-in  { border-left-color: var(--success); }
+.thread-meta { font-size: 12px; color: var(--muted); margin-bottom: 2px; }
+.thread-subj { font-weight: 600; font-size: 13px; }
+.thread-subj-unread { font-weight: 700; }
+.thread-prev { color: var(--muted); font-size: 12px; margin-top: 2px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.6px;
+  color: var(--muted); margin: 24px 0 8px; }
+
+.row { display: flex; gap: 16px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+.row label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+.inbox-pager { justify-content: center; gap: 12px; margin-top: 12px; }
+.inbox-pager button:disabled { opacity: 0.45; cursor: not-allowed; }
+.row select, .row input[type="number"] {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 13px;
+}
+
+/* Stat groups (feedback): one wide rounded rectangle per group, light
+   vertical dividers between the numbers; flex-wrap keeps everything inside
+   the same container on narrow screens (no lone cards drifting to a new
+   row with their own borders). */
+.stats {
+  display: flex; flex-wrap: wrap;
+  background: var(--panel); border: 1px solid var(--border); border-radius: 14px;
+  padding: 6px 0;
+}
+.stat {
+  background: transparent; border: none; border-radius: 0;
+  padding: 12px 26px; min-width: 0; flex: 1 1 auto;
+  display: flex; flex-direction: column;
+}
+.stat + .stat { border-left: 1px solid var(--border); }
+@media (max-width: 520px) { .stat { padding: 10px 16px; } }
+.stat .num { font-size: 28px; font-weight: 600; }
+.stat span:last-child { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+#recent-activity ul { list-style: none; padding: 0; margin: 0; }
+#recent-activity li {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+#recent-activity small { color: var(--muted); }
+
+table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+th, td {
+  text-align: left;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
+td code { font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: 12px; color: var(--muted); }
+
+.mail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+/* Mobile inbox/mail (v0.4.12 hotfix): List | Message tabs — the stacked
+   two-pane layout hid the detail area below a long list. One pane shows at
+   a time; opening a message flips to Message. Desktop (grid side-by-side)
+   is untouched — tabs and pane-switching CSS apply only <=800px. */
+.mail-tabs { display: none; }
+@media (max-width: 800px) {
+  .mail-tabs { display: flex; gap: 0; margin-bottom: 10px; }
+  .mtab {
+    flex: 1; padding: 8px 0; font-size: 13px; font-family: inherit; cursor: pointer;
+    background: var(--panel); border: 1px solid var(--border); color: var(--muted);
+  }
+  .mtab:first-child { border-radius: 6px 0 0 6px; }
+  .mtab:last-child { border-radius: 0 6px 6px 0; border-left: none; }
+  .mtab.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  /* !important: #inbox-detail/#mail-detail carry a global ID-flex rule
+     (prev/next band) whose specificity (1,0,0) beats this class selector —
+     without it the detail pane leaks through in List mode on phones
+     (superior 0.1.9, live screenshot). */
+  .mail-grid.mshow-detail > .pane:first-child { display: none !important; }
+  /* :last-child 会因 inbox 网格末尾新增的分页控件失效（09-04 悬浮化）——
+     改用显式 ID 钉死正文栏（PC 分页条入格后 list/message 双显回归 bug） */
+  .mail-grid:not(.mshow-detail) > .pane:last-child,
+  .mail-grid:not(.mshow-detail) > #inbox-detail,
+  .mail-grid:not(.mshow-detail) > #mail-detail { display: none !important; }
+  .pane { min-height: 240px; max-height: none; }
+}
+@media (max-width: 800px) { .mail-grid { grid-template-columns: 1fr; } }
+/* Inbox/Mail mobile: superseded by the List|Message tab pattern above —
+   keep only the tighter list rows. */
+@media (max-width: 800px) {
+  .mail-item { padding: 8px; }
+  .mail-item .meta, .mail-item .prev { font-size: 11px; }
+}
+.pane {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  min-height: 300px;
+  max-height: 600px;
+  overflow-y: auto;
+  font-size: 13px;
+}
+.mail-item {
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  margin-bottom: 4px;
+}
+.mail-item:hover { background: var(--panel-2); }
+.mail-item.selected { background: var(--panel-2); border-color: var(--accent); }
+.mail-item .subj { font-weight: 600; margin-bottom: 2px; }
+.mail-item.unread .subj { font-weight: 700; }
+.mail-item.unread { border-left: 3px solid var(--accent); padding-left: 9px; }
+.unread-dot { color: var(--accent); font-size: 10px; margin-right: 6px; vertical-align: middle; }
+.mail-item .meta { color: var(--muted); font-size: 12px; margin-bottom: 2px; }
+.mail-item .prev { color: var(--muted); font-size: 12px; }
+
+.detail-row { padding: 3px 0; }
+.detail-row b { color: var(--muted); font-weight: 500; display: inline-block; min-width: 64px; }
+
+/* Admin invalid-letter inspector (strict-delete, 开工令 01M1FSKAD). */
+.invalid-list {
+  border: 1px solid var(--border); border-radius: 8px;
+  max-height: 320px; overflow-y: auto; background: var(--bg);
+}
+.inv-head, .inv-row {
+  display: grid; grid-template-columns: 28px 1.2fr 1.4fr 1.2fr 0.9fr;
+  gap: 8px; align-items: center; padding: 6px 10px;
+  border-bottom: 1px solid var(--border); font-size: 12px;
+}
+.inv-head { font-weight: 600; color: var(--muted); position: sticky; top: 0; background: var(--panel); }
+.inv-row { cursor: pointer; }
+.inv-row:hover { background: var(--panel-2); }
+.inv-row:last-child { border-bottom: none; }
+.inv-to { color: #c0392b; }
+.inv-time { color: var(--muted); }
+.inv-danger { color: #c0392b; border-color: #c0392b; }
+.body {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-family: ui-monospace, "SF Mono", Consolas, monospace;
+  font-size: 13px;
+  margin: 8px 0 0;
+}
+/* Copyable config/prompt blocks on the register-success agent section. */
+.code-block {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-family: ui-monospace, "SF Mono", Consolas, monospace;
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-x: auto;
+  margin: 6px 0 16px;
+}
+/* Collapsible agent-setup section on the register-success page. */
+#agent-setup-details > summary { cursor: pointer; padding: 4px 0; }
+#agent-setup-details[open] > summary { margin-bottom: 4px; }
+
+.callout {
+  padding: 12px 16px;
+  border-radius: 6px;
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+.callout.success { background: rgba(63, 185, 80, 0.12); border: 1px solid var(--success); }
+.callout.error { background: rgba(248, 81, 73, 0.12); border: 1px solid var(--error); }
+.callout code {
+  background: var(--panel);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 12px;
+}
+
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  padding: 10px 16px;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  font-size: 13px;
+  max-width: 320px;
+}
+.toast.error { border-color: var(--error); }
+.toast.success { border-color: var(--success); }
+/* Mobile (superior): center the feedback toast across the width instead of
+   hugging the right edge where it clipped on narrow screens. */
+@media (max-width: 600px) {
+  .toast {
+    left: 12px;
+    right: 12px;
+    bottom: 14px;
+    max-width: none;
+    text-align: center;
+    padding: 10px 12px;
+  }
+}
+
+.hidden { display: none !important; }
+
+/* Setup wizard */
+.setup-page {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  background: var(--bg); padding: 20px;
+}
+.setup-card {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+  padding: 32px; max-width: 460px; width: 100%;
+}
+.setup-card h1 { font-size: 22px; margin: 0 0 8px; }
+.setup-note { margin-top: 16px; font-size: 12px; }
+
+/* Wizard MCP capsules */
+.capsule { border: 1px solid var(--border); border-radius: 6px; margin-bottom: 8px; overflow: hidden; }
+.capsule-header {
+  width: 100%; text-align: left; background: var(--panel-2); border: none;
+  padding: 10px 14px; cursor: pointer; font-size: 14px; font-weight: 500; color: var(--text);
+  display: flex; align-items: center; gap: 8px;
+}
+.capsule-header:hover { background: var(--border); }
+.capsule-desc { font-weight: 400; font-size: 11px; }
+.capsule-toggle { margin-left: auto; color: var(--muted); }
+.capsule-body { padding: 12px 14px; }
+.snippet-where { margin-bottom: 6px; font-size: 12px; }
+.snippet {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 4px;
+  padding: 10px; font-family: ui-monospace, "SF Mono", Consolas, monospace;
+  font-size: 12px; white-space: pre-wrap; word-break: break-all; overflow-x: auto;
+  margin: 0 0 8px;
+}
+.write-status { font-size: 12px; }
+.success-note { color: var(--success); font-size: 14px; margin: 16px 0; }
+.error-text { color: var(--error); }
+
+/* Settings tab */
+.settings-section { margin-bottom: 24px; }
+.settings-section .row { gap: 16px; flex-wrap: wrap; }
+
+/* My activity grouped card (Overview): two columns of compact stat rows
+   instead of a long row of boxes (admin feedback). */
+.my-activity-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px 32px; }
+@media (max-width: 800px) { .my-activity-grid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 520px) { .my-activity-grid { grid-template-columns: 1fr; } }
+.my-group-title {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
+  color: var(--muted); margin: 0 0 6px; font-weight: 600;
+}
+.my-stat-row { display: flex; justify-content: space-between; align-items: baseline;
+  padding: 3px 0; border-bottom: 1px solid var(--border); }
+.my-stat-row:last-child { border-bottom: none; }
+.my-stat-label { font-size: 13px; color: var(--muted); }
+.my-stat-num { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* ============================================================
+   One-click agent register modal (v0.4.2)
+   Overlay + centered card; glass style consistent with the
+   portal redesign. Closes via ×, overlay click, or Esc.
+   ============================================================ */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(8, 10, 16, 0.6);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.modal-card {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 14px;
+  padding: 24px 26px; width: 100%; max-width: 640px; max-height: 88vh;
+  display: flex; flex-direction: column; gap: 10px;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.45);
+}
+.modal-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.modal-head h2 { margin: 0; font-size: 18px; }
+.modal-x {
+  background: transparent; border: none; color: var(--muted);
+  font-size: 22px; line-height: 1; cursor: pointer; padding: 4px 8px;
+  border-radius: 6px;
+}
+.modal-x:hover { color: var(--text); background: var(--panel-2); }
+/* Scrollable prompt block, clamped by the modal's max-height. */
+.modal-code { flex: 1 1 auto; overflow-y: auto; min-height: 120px; max-height: 42vh; }
+@media (max-width: 520px) {
+  .modal-card { padding: 18px; max-height: 92vh; }
+  .modal-code { max-height: 34vh; }
+}
+
+/* ============================================================
+   Guest portal (public landing page) — v0.4.2 redesign
+   "deep-space + aurora": animated gradient backdrop, glass cards,
+   count-up stats, 7-day growth bars, directory avatar cards.
+   All motion degrades under prefers-reduced-motion. No build step,
+   no dependencies — plain CSS + a little JS in app.js.
+   ============================================================ */
+
+/* Aurora backdrop: three blurred radial glows drifting slowly.
+   Fixed behind everything while the portal is visible. Never a click
+   target, whatever the stacking context. */
+.aurora { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; background: var(--portal-bg, var(--bg)); }
+.aurora::before, .aurora::after { content: ""; position: absolute; border-radius: 50%; filter: blur(90px); opacity: .5; }
+.aurora::before { width: 60vw; height: 60vw; left: -15vw; top: -20vw;
+  background: radial-gradient(circle, rgba(94,162,255,.45), transparent 65%);
+  animation: aurora-drift-1 26s ease-in-out infinite alternate; }
+.aurora::after { width: 50vw; height: 50vw; right: -12vw; top: 10vh;
+  background: radial-gradient(circle, rgba(138,123,255,.38), transparent 65%);
+  animation: aurora-drift-2 32s ease-in-out infinite alternate; }
+.aurora .glow3 { position: absolute; width: 46vw; height: 46vw; left: 28vw; bottom: -22vw; border-radius: 50%;
+  filter: blur(100px); opacity: .35;
+  background: radial-gradient(circle, rgba(79,214,196,.4), transparent 65%);
+  animation: aurora-drift-1 38s ease-in-out infinite alternate-reverse; }
+@keyframes aurora-drift-1 { from { transform: translate(0,0) scale(1); } to { transform: translate(6vw, 4vh) scale(1.15); } }
+@keyframes aurora-drift-2 { from { transform: translate(0,0) scale(1.1); } to { transform: translate(-5vw, 6vh) scale(.95); } }
+
+/* Floating envelope particles (span.portal-particle, spawned by JS). */
+.portal-particle { position: fixed; z-index: -1; bottom: -10px; color: rgba(139,147,167,.4);
+  font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: 12px;
+  user-select: none; pointer-events: none; animation: portal-rise linear infinite; }
+@keyframes portal-rise {
+  from { transform: translateY(0); opacity: 0; }
+  10% { opacity: .8; } 90% { opacity: .6; }
+  to { transform: translateY(-110vh); opacity: 0; }
+}
+
+/* Explicit stacking: content always paints above the backdrop danmaku
+   (mode B), immune to subtle layer reordering. */
+.portal-wrap { position: relative; z-index: 1; max-width: 1080px; margin: 0 auto; padding: 24px 20px 80px; }
+
+/* Hero */
+.portal-hero { text-align: center; padding: 64px 0 40px; }
+.portal-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: 12px; color: var(--muted);
+  border: 1px solid var(--border); border-radius: 999px;
+  padding: 5px 14px; background: var(--portal-glass, var(--panel)); backdrop-filter: blur(8px);
+}
+.pulse-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success);
+  box-shadow: 0 0 0 0 rgba(63,185,80,.6); animation: portal-pulse 2.2s infinite; }
+@keyframes portal-pulse { 70% { box-shadow: 0 0 0 9px rgba(63,185,80,0); } 100% { box-shadow: 0 0 0 0 rgba(63,185,80,0); } }
+.portal-title {
+  font-size: clamp(44px, 8vw, 76px); letter-spacing: -2.5px; margin: 26px 0 14px; font-weight: 800;
+  /* Fourth fix, evidence-led (A/B pixel forensics on a reproducing engine):
+     the gradient must NOT live on this h1 — the .portal-title-word wrapper
+     (relative + inline-block, added for the corner-mark pill between v0.4.2
+     and v0.6.1) sits between the clip element and its text, and engines of
+     the WebKit/MobileChrome family silently drop the whole clip paint for
+     that shape (v0.4.2 bare-text h1 painted fine; v0.6.1+ never did).
+     The clip moves one level down onto a text-only span (no positioned
+     children) — engine-equivalent to the v0.4.2 shape that always painted. */
+}
+.portal-title-grad {
+  background: linear-gradient(100deg, #e8f0ff 20%, #5ea2ff 55%, #8a7bff 80%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+/* Corner-mark placement (superior, round 5): the WORD stays perfectly
+   centered (text-align unchanged); a shrink-wrapped .portal-title-word
+   gives the pill an anchor at the word's own right end — absolute, so
+   the pill never affects the heading's layout or centering. */
+.portal-title-word { position: relative; display: inline-block; }
+.portal-title .lang-toggle {
+  position: absolute; left: calc(100% + 12px); bottom: 10px;
+}
+/* Fill guard: -webkit-text-fill-color INHERITS — the segments re-declare it
+   from their own color so no ancestor (gradient experiments included) can
+   ever blank the capsule labels again. */
+.portal-title .lang-toggle .seg { font-size: 11px; padding: 3px 8px; -webkit-text-fill-color: currentcolor; }
+@media (max-width: 520px) {
+  .portal-title .lang-toggle { left: calc(100% + 8px); bottom: 6px; }
+}
+.portal-sub { color: var(--muted); font-size: 17px; max-width: 560px; margin: 0 auto 30px; }
+.portal-ctas { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+.btn {
+  display: inline-flex; align-items: center; gap: 8px; padding: 12px 26px; border-radius: 10px;
+  font-size: 15px; font-weight: 600; cursor: pointer; text-decoration: none; border: none;
+  font-family: inherit;
+  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+.btn:active { transform: translateY(1px) scale(.98); }
+.btn-primary {
+  color: #fff;
+  background: linear-gradient(120deg, #5ea2ff, #8a7bff);
+  box-shadow: 0 6px 24px rgba(94,162,255,.35);
+}
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 32px rgba(94,162,255,.5); }
+.btn-ghost { color: var(--text); background: var(--panel); border: 1px solid var(--border); backdrop-filter: blur(8px); }
+.btn-ghost:hover { border-color: var(--accent); transform: translateY(-2px); }
+
+/* One-click agent register (portal hero): the star CTA — visually stronger
+   than the plain Register button per admin request: bolder, larger type in
+   the accent color with a tinted fill and glow, still outline-style so it
+   doesn't compete with the filled Log in primary. */
+.btn-accent {
+  color: var(--accent); font-weight: 700; font-size: 15px;
+  background: rgba(94, 162, 255, 0.12);
+  border: 1px solid var(--accent);
+  box-shadow: 0 0 18px rgba(94, 162, 255, 0.25);
+}
+.btn-accent:hover {
+  border-color: var(--accent); transform: translateY(-2px);
+  box-shadow: 0 6px 26px rgba(94, 162, 255, 0.45);
+  color: var(--accent);
+}
+@media (prefers-color-scheme: light) {
+  .btn-accent { color: #2f6fc0; background: rgba(47, 111, 192, 0.10); }
+  .btn-accent:hover { color: #2f6fc0; }
+}
+html[data-theme="light"] .btn-accent { color: #2f6fc0; background: rgba(47, 111, 192, 0.10); }
+html[data-theme="dark"] .btn-accent { color: #4a9eff; background: transparent; }
+
+/* Section titles */
+.portal-section-title { display: flex; align-items: baseline; gap: 10px; margin: 48px 0 18px; }
+.portal-section-title h2 { font-size: 15px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); margin: 0; }
+.portal-section-title .line { flex: 1; height: 1px; background: var(--border); }
+
+/* Cards / grid */
+.portal-grid { display: grid; grid-template-columns: 1fr 1.6fr; gap: 16px; }
+@media (max-width: 760px) { .portal-grid { grid-template-columns: 1fr; } }
+.portal-card {
+  background: rgba(22, 27, 41, 0.72); border: 1px solid var(--border); border-radius: 16px;
+  padding: 22px 24px; backdrop-filter: blur(10px);
+}
+/* Light theme: glass on a light backdrop needs its own values. */
+@media (prefers-color-scheme: light) {
+  .portal-card { background: rgba(255,255,255,.75); }
+}
+html[data-theme="light"] .portal-card { background: rgba(255,255,255,.75); }
+html[data-theme="dark"]  .portal-card { background: rgba(22, 27, 41, 0.72); }
+
+/* Stats column: wraps instead of overflowing on narrow screens (fixes the
+   v0.4.0 horizontal-overflow bug admin reported). */
+.portal-stats { display: flex; flex-direction: column; gap: 16px; }
+.portal-stat { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.portal-stat .num { font-size: 34px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -1px; }
+.portal-stat .num.hot { color: #4fd6c4; }
+.portal-stat .label { font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; text-align: right; }
+
+/* Growth bars */
+.chart-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; gap: 8px; flex-wrap: wrap; }
+.chart-head .t { font-weight: 600; font-size: 15px; }
+.chart-head .u { font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: 11px; color: var(--muted); }
+.bars { display: flex; align-items: flex-end; gap: 8px; height: 130px; }
+.bar { flex: 1; border-radius: 6px 6px 2px 2px; position: relative; min-width: 0;
+  background: linear-gradient(180deg, #5ea2ff, rgba(138,123,255,.25));
+  transform-origin: bottom; animation: bar-grow .8s cubic-bezier(.2,.8,.2,1) backwards; }
+.bar:hover { filter: brightness(1.25); }
+.bar .tip { position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%);
+  font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: 11px; color: #4fd6c4; white-space: nowrap; opacity: 0; transition: opacity .15s; }
+.bar:hover .tip { opacity: 1; }
+.bar-lbls { display: flex; gap: 8px; margin-top: 6px; }
+.bar-lbls span { flex: 1; text-align: center; font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: 10px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
+@keyframes bar-grow { from { transform: scaleY(0); } }
+
+/* Directory avatar cards */
+.dir-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+.dir-card { display: flex; gap: 14px; align-items: center; min-width: 0;
+  background: rgba(22, 27, 41, 0.72); border: 1px solid var(--border); border-radius: 14px;
+  padding: 16px 18px; backdrop-filter: blur(10px);
+  transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease; }
+@media (prefers-color-scheme: light) { .dir-card { background: rgba(255,255,255,.75); } }
+html[data-theme="light"] .dir-card { background: rgba(255,255,255,.75); }
+html[data-theme="dark"]  .dir-card { background: rgba(22, 27, 41, 0.72); }
+.dir-card:hover { transform: translateY(-3px); border-color: var(--accent);
+  box-shadow: 0 10px 30px rgba(94,162,255,.18); }
+.avatar { width: 44px; height: 44px; border-radius: 12px; flex: 0 0 auto;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 16px; color: #fff; }
+.dir-card .addr { font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: 13px;
+  overflow-wrap: anywhere; }
+.dir-card .sig { color: var(--muted); font-size: 13px; margin-top: 2px; overflow-wrap: anywhere; }
+
+.portal-footer { margin-top: 64px; text-align: center; color: var(--muted);
+  font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: 12px; }
+.portal-footer a { color: var(--muted); }
+
+/* ============================================================
+   Mobile adaptation (v0.4.2) — panel P0/P1, CSS-only.
+   Fixes measured issues at 390px: page-level horizontal overflow
+   (nav 680px vs 350px container, 4 tabs unreachable), table
+   overflow, iOS input auto-zoom (<16px), small touch targets.
+   ============================================================ */
+
+/* Nav: horizontally scrollable tab strip instead of overflowing the page.
+   Scrollbar hidden but scrolling stays possible (touch drag / wheel). */
+nav {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+nav::-webkit-scrollbar { display: none; }
+/* v0.3 (boss v2): PC tabs equalize to the WIDEST label's width — an
+   inline grid with 1fr columns; the bar itself stays content-sized.
+   Mobile keeps its own wrap rules below (untouched flex plan). */
+@media (min-width: 961px) {
+  nav { display: inline-grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; width: max-content; }
+  nav .tab { text-align: center; min-width: 0; white-space: nowrap; }
+}
+
+/* Tables: scroll within themselves only on narrow screens. On wide screens
+   the scroll treatment squeezed columns into an inner scrollbar (v0.4.2
+   regression reported by admin on PC), so >800px keeps the original
+   natural table layout. */
+@media (max-width: 800px) {
+  .tab-panel table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  /* Superior (01M11QH8): mobile nav adapts by sizing, not clipping —
+     font drops a notch and paddings tighten so zh fits all seven tabs on
+     one line and English five-card accounts stay on a single row at 390px
+     (360px small phones verified safe). Longer sets (admin English) wrap
+     into balanced rows, every finished line stretched edge-to-edge via
+     grow; labels are never truncated. */
+  nav { flex-wrap: wrap; gap: 5px; }
+  nav .tab {
+    flex: 1 0 auto;
+    min-width: max-content;
+    text-align: center;
+    font-size: 12px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+    padding-left: 6px;
+    padding-right: 6px;
+    white-space: nowrap;
+  }
+  /* 1047 (boss): with exactly four buttons the labels take the roomy
+     type - one notch larger and bold; other sets keep the fit-first
+     12px (applyRole publishes the visible count on nav[data-tabs]). */
+  nav[data-tabs="4"] .tab { font-size: 14px; font-weight: 600; }
+}
+
+/* Stats row wraps instead of overflowing. */
+
+/* Mail tab selectors overflow on phones (feedback): let the account
+   dropdown take the row's width instead of stretching the page. */
+@media (max-width: 800px) {
+  #tab-mail .row label { flex: 1 1 100%; }
+  #mail-account { width: 100%; max-width: 100%; }
+  /* Feedback 09-04: CJK label text must stay on one line - the span was
+     flex-shrunk to a single glyph column. Forbid span shrink+wrap. */
+  #tab-mail .row label > span { flex: none; white-space: nowrap; }
+  #tab-mail .row label > select,
+  #tab-mail .row label > input { flex: 1 1 0; min-width: 0; width: auto; }
+  /* Feedback 09-04: pager moved inside #inbox-grid for the PC floating
+     capsule; on phones that adds grid row-gap plus inherited margin.
+     Restore the original tight rhythm. */
+  #inbox-grid { row-gap: 0; }
+  #tab-inbox #inbox-grid > .inbox-pager { margin-top: 10px; }
+  /* Feedback 09-04: PDF reader fallback for devices without an inline
+     viewer (was a blank white iframe). */
+  .pdf-fallback { display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 10px; width: 100%; height: 100%;
+    padding: 24px; text-align: center; }
+  .pdf-fallback-ic { font-size: 44px; }
+  .pdf-fallback-name { font-weight: 600; word-break: break-all; }
+  .pdf-fallback-hint { color: var(--muted); font-size: 13px; max-width: 30em; }
+  .pdf-fallback-open { min-width: 96px; }
+}
+
+/* Accounts as cards on mobile (feedback): the 5-column table needs
+   horizontal dragging at phone widths. <=800px each row becomes a glass
+   card; cells stack with small labels from data-label attributes.
+   Empty labeled cells (no value) collapse away. PC keeps the table. */
+@media (max-width: 800px) {
+  #accounts-table thead { display: none; }
+  #accounts-table, #accounts-table tbody, #accounts-table tr, #accounts-table td {
+    display: block; width: 100%; box-sizing: border-box;
+  }
+  /* Every row becomes a card on phones — EXCEPT the hairline separator
+   and the register block, which must stay bare (reviewer: the line is
+   just a line, no container). */
+  #accounts-table tr {
+    border: 1px solid var(--border); border-radius: 12px; margin-bottom: 10px;
+    padding: 12px 14px; background: var(--panel);
+  }
+  #accounts-table tr.sep-row,
+  #accounts-table tr.agentreg-row {
+    border: none; border-radius: 0; margin-bottom: 0;
+    padding: 0; background: transparent;
+  }
+  #accounts-table td { border: none; padding: 4px 0; overflow-wrap: anywhere; }
+  #accounts-table td[data-label]::before {
+    content: attr(data-label); display: block;
+    font-size: 10px; text-transform: uppercase; letter-spacing: .8px;
+    color: var(--muted); margin-bottom: 1px;
+  }
+  /* Hide fully empty cells (Signature/Created with no value). */
+  #accounts-table td[data-label]:empty { display: none; }
+  #accounts-table td.actions-cell { margin-top: 6px; white-space: normal; }
+  #accounts-table td.actions-cell button { margin: 0 6px 6px 0; }
+  /* PC-only leading sub rows disappear on phones (the container card
+     takes over there); the container row disappears on desktop. */
+  .subrow-pc { display: none !important; }
+
+  /* ---- Accounts one-screen plan (superior 09-02, phones only) ----
+     Captions gone; badges + address share ONE line (address marquees on
+     overflow, no wrapping); signature max one line; contact rows hand
+     over to the scrollable #acc-m-contacts list; the page title hides;
+     every button stays. PC keeps the plain table. */
+  #tab-accounts > h2 { display: none; }
+  #accounts-table td[data-label]::before { content: none; }
+  #accounts-table tr {
+    display: flex; flex-wrap: wrap; align-items: center;
+    padding: 10px 12px;
+  }
+  #accounts-table td { padding: 2px 0; }
+  #accounts-table td[data-label]:empty { display: none; }
+  /* Row-cell grammar scoped to #accounts-table (superior 0.2.2 feedback
+     point 1): bare class versions also matched the directory table and
+     bent its table-layout columns on phones. */
+  #accounts-table .addr-cell { order: 1; flex: 1 1 0; min-width: 0; }
+  #accounts-table .addr-cell + td { order: 2; flex: 0 0 auto; margin-left: 6px; }
+  #accounts-table td.sig-cell { order: 3; flex: 1 1 100%; }
+  #accounts-table td.sig-cell + td { order: 4; flex: 1 1 100%; font-size: 12px; color: var(--muted); }
+  #accounts-table td.actions-cell { order: 5; flex: 1 1 100%; margin-top: 4px; }
+  #accounts-table tr.ct-row, #accounts-table tr.own-row { display: none; } /* the mobile lists take over */
+  #acc-m-own { margin-bottom: 10px; }
+  #acc-m-own .ct-addr { font-size: 13px; font-weight: 600; }
+  /* The two scrollable zones get a visible boundary (superior feedback):
+     ONE rounded box per zone, inner cards flattened to hairline rows and
+     clipped by the container — no nested rounded boxes. */
+  /* 1049 (boss): the zone read as a floating rounded card - make it
+     hug the edges: full width, square corners, no boundary box. */
+  .sub-list, #acc-m-contacts {
+    border: none; border-radius: 0;
+    background: var(--sub-card-bg);
+  }
+  .sub-list .sub-card, #acc-m-contacts .ct-card {
+    border: none; border-bottom: 1px solid var(--border);
+    border-radius: 0; background: transparent; margin: 0;
+  }
+  .sub-list .sub-card:last-child, #acc-m-contacts .ct-card:last-child { border-bottom: none; }
+  .sub-list { overflow-y: auto; margin: 4px 0 2px; }
+  /* Feedback 09-04: subordinate entries merge into the contacts card
+     (subs on top, hairline group divider) and the register button becomes
+     its own bare card - so .sub-list is gone from the flow. */
+  #acc-m-contacts .sub-card {
+    border: none; border-bottom: 1px solid var(--border);
+    border-radius: 0; background: transparent; margin: 0;
+  }
+  #acc-m-contacts .sub-card:last-child { border-bottom: none; }
+  .ct-groups-sep { height: 1px; background: var(--border); margin: 6px 0; }
+
+  /* ---- v0.2.8-r1 (boss ruling 01M259Y5B): revert the one-screen plan
+     for ADMIN sessions on phones — the plan was built for the regular
+     accounts view and renders the admin table broken. With .acc-admin
+     the pre-plan card layout (rows -> plain cards with data-labels)
+     applies again, the empty mobile zones disappear and the page title
+     returns. Regular users keep the plan unchanged. ---- */
+  #tab-accounts.acc-admin > h2 { display: block; }
+  #tab-accounts.acc-admin #accounts-table tr {
+    display: block; width: 100%; box-sizing: border-box;
+    padding: 12px 14px;
+  }
+  #tab-accounts.acc-admin #accounts-table td[data-label]::before {
+    content: attr(data-label); display: block;
+    font-size: 10px; text-transform: uppercase; letter-spacing: .8px;
+    color: var(--muted); margin-bottom: 1px;
+  }
+  #tab-accounts.acc-admin #accounts-table td { padding: 4px 0; }
+  #tab-accounts.acc-admin #accounts-table td.actions-cell { margin-top: 6px; }
+  #tab-accounts.acc-admin #acc-m-own,
+  #tab-accounts.acc-admin #acc-m-contacts { display: none; }
+  /* v0.2.8.2 (boss live report: admin list cannot scroll on phones): the
+     document lock above assumes the regular one-screen plan's inner
+     scroller (#acc-m-contacts). The reverted admin view has none — its
+     many account cards must scroll the document itself, so exempt
+     .acc-admin from the lock entirely. */
+
+  /* ---- 0.3.3-C: accounts listification — boss directive: ported from
+   Iris's v6 implementation (shot_c6.js) verbatim; class prefix im3- kept
+   so diffing against her preview code stays 1:1. ---- */
+  .im3-list { border-top: 1px solid var(--border); background: var(--panel); }
+  .im3-row { position: relative; display: flex; align-items: center; gap: 10px;
+    padding: 9px 12px; border-bottom: 1px solid var(--border); cursor: pointer; }
+  .im3-row.pinned { background: rgba(74,158,255,.07); }
+  .im3-av { width: 38px; height: 38px; border-radius: 10px; flex: 0 0 auto; align-self: center;
+    display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 15px; overflow: hidden; }
+  .im3-av.pin { border: 1px dashed var(--accent); background: transparent; color: var(--accent); font-size: 18px; font-weight: 400; }
+  .im3-av .cl-av-img { width: 38px; height: 38px; }
+  /* Equal height: the label body carries a uniform three-line height; rows
+     center whatever they have. */
+  .im3-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column;
+    gap: 2px; justify-content: center; min-height: 54px; }
+  .im3-l1 { display: flex; align-items: center; gap: 6px; min-width: 0; min-height: 18px;
+    line-height: 18px; }
+  /* Badges/heartbeat: nowrap, never shrink (v4 defect root fix). */
+  .im3-l1 .badge-ext, .im3-l1 .badge-listed, .im3-l1 .badge { flex: 0 0 auto; white-space: nowrap; line-height: 1; }
+  .im3-l1 .badge-ext { background: rgba(139,92,246,.22); color: #b39cff; font-size: 10px;
+    padding: 1px 6px; border-radius: 3px; }
+  .im3-l1 .act-pill-slot { flex: 0 0 auto; margin-left: auto; display: inline-flex; }
+  .im3-l1 .act-pill-slot:empty { display: none; }
+  .im3-addr { flex: 1 1 auto; min-width: 0; font-size: 13px; font-weight: 600;
+    white-space: nowrap; overflow: hidden; text-align: left; }
+  .im3-addr-in { display: inline-block; max-width: none; }
+  .im3-addr.mq .im3-addr-in {
+    animation: im3mq var(--mq-dur, 8s) linear infinite alternate; }
+  @keyframes im3mq {
+    0%, 16% { transform: translateX(0); }
+    84%, 100% { transform: translateX(var(--mq-shift, -40px)); } }
+  .im3-line2, .im3-line3 { font-size: 11.5px; line-height: 16px; height: 16px; color: var(--muted);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* 0.3.4 item 1 (boss pick B): the pinned register row carries the full
+     readable note - let its line2 wrap; the one-line ellipsis grammar
+     stays for every other row. */
+  .im3-row[data-reg] .im3-line2 { white-space: normal; height: auto; }
+  .im3-line3 .cl-none { opacity: .75; }
+  /* 0.3.3-C ②③ (Iris spec v1.0): empty / fetch-failure rows - row-grammar
+     states, not floating text. Error red matches the 404-fallback family. */
+  .im3-row.im3-empty, .im3-row.im3-err { cursor: default; }
+  .im3-av-empty, .im3-av-err {
+    display: flex; align-items: center; justify-content: center;
+    border: 1px dashed var(--border); background: transparent; color: var(--muted);
+  }
+  .im3-row.im3-err { cursor: pointer; background: rgba(229, 72, 77, 0.08); }
+  .im3-av-err { border-color: rgba(229, 72, 77, 0.4); color: #e5484d; }
+  .im3-state-t { font-size: 13px; font-weight: 600; color: var(--muted);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .im3-row.im3-err .im3-state-t { color: #e5484d; }
+  .im3-state-s { font-size: 11.5px; line-height: 16px; color: var(--muted);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .im3-row.im3-err[data-retrying] { opacity: 0.6; pointer-events: none; }
+  /* boss rc9/rc10 feedback: flush containers need inner breathing so the
+     last interactive row clears the bar at scroll-end (buttons must not
+     sit flush against it). Probe on rc9: threads pager scroll-end gap was
+     0px (buttons touching the bar) - the old #mgmt-threads > *:last-child
+     matched the hidden #tf-scroll, not the list; browse sat at ~18px and
+     still read tight. Both manage lists now clear the bar by ~24px at
+     scroll-end. */
+  #acc-m-contacts .im3-row:last-child { margin-bottom: 10px; }
+  #mail-list > *:last-child { margin-bottom: 14px; }
+  #th-list > *:last-child { margin-bottom: 24px; }
+  /* boss directive round 2: keep the bare symbol but give it back a small
+     box, glyph a notch larger, still centered. */
+  .im3-gear { height: 26px; padding: 0 7px; border: 1px solid var(--border); border-radius: 8px;
+    background: transparent; color: var(--muted); font-size: 17px; line-height: 24px;
+    flex: 0 0 auto; align-self: center; }
+  .im3-gear:hover { color: var(--accent); border-color: var(--accent); }
+  .im3-overlay { position: absolute; inset: 0; display: none; align-items: center; gap: 8px;
+    padding: 0 12px 0 12px; background: color-mix(in srgb, var(--panel-2) 86%, transparent); z-index: 3; }
+  .im3-overlay.on { display: flex; }
+  .im3-overlay button { font-size: 12px; padding: 5px 12px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--bg); color: var(--text); cursor: pointer; }
+  .im3-overlay button.warn { color: #ff9c9c; border-color: rgba(255,120,120,.35); }
+  .im3-overlay .cl-close { margin-left: auto; border: none; background: transparent; color: var(--muted); font-size: 14px; }
+  .im3-title-pin { color: var(--accent); }
+  /* v6 grammar: the register entry IS the pinned list row — the old
+     above-table register banner has no place on phones (Iris's preview
+     hides it; PC keeps #subreg-pc). */
+  #subreg-pc { display: none; }
+  #tab-accounts .agentreg-card { display: none; }
+  /* boss directive: frameless full-bleed list — no outer border, rows run
+     edge-to-edge, the list spans from the floating header down to the
+     floating bottom bar (accounts page only). :has() scopes the main
+     padding/margin reset to exactly this page. */
+  body:has(#tab-accounts:not(.hidden)) main {
+    margin-top: 0; padding: 0 0 0 0; padding-bottom: 0;
+  }
+  body:has(#tab-accounts:not(.hidden)) #tab-accounts {
+    display: flex; flex-direction: column; margin: 0; padding: 0;
+    min-height: calc(100vh - 64px - env(safe-area-inset-bottom, 0px));
+    box-sizing: border-box;
+  }
+  #tab-accounts > h2 { display: none; }
+  #acc-m-contacts { flex: 1 1 auto; margin: 0; border: none; border-top: none; }
+}
+
+
+/* ---- 0.3.3-B: bottom navigation bar (mobile only; boss approved) ----
+ Minimal-move ruling: the nav keeps its exact current styling — only the
+ container position changes. Desktop (PC) is untouched. */
+@media (max-width: 800px) {
+nav {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 40;
+  background: var(--panel); /* 样式照旧：顶区原 nav 承 panel 底 */
+  box-shadow: 0 -1px 0 var(--border); /* boss rc4 补充：底栏区框线恢复（按钮框线仍去），与顶区风格对等 */
+  /* boss: the tab's bottom edge sat too close to the screen edge — pad a
+     little more (safe-area still adds on top of this where present). */
+  padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
+  margin: 0; padding-left: 6px; padding-right: 6px; padding-top: 6px;
+}
+  /* boss 去框线定稿（上下悬浮区）：页签/顶区钮无框线保留填色；active 高亮底保留。仅移动断点，PC 零改动。 */
+  /* boss rc4 补充：上悬浮区去阴影，与带框线的底栏风格对等 */
+  #app-header { box-shadow: none; }
+  .tab.active { border-color: transparent; }
+  #app-header .btn-pref-pill, #app-header .btn-logout-pill, #app-header .lang-toggle { border-color: transparent; }
+
+  /* boss rc3 feedback: fitted one-screen pages self-clear via the nav-aware
+     fits - the static 64px main reserve below them read as an empty gray
+     strip between content and the bottom bar. */
+  body:has(#tab-inbox:not(.hidden)) main,
+  body:has(#tab-mail:not(.hidden)) main,
+  body:has(#tab-compose:not(.hidden)) main,
+  body:has(#tab-audit:not(.hidden)) main,
+  body:has(#tab-accounts:not(.hidden)) main { padding-bottom: 0; }
+  /* One-screen pages never scroll as a page: their fits own the geometry
+     and the inner lists scroll. Locking the body kills every residual
+     scroll tail / rubber band (boss rc9 feedback).
+     NOTE: html:has(...) - body cannot :has itself. */
+  /* the scrolling element in standards mode is html, not body - lock both */
+  html:has(#tab-inbox:not(.hidden)),
+  html:has(#tab-mail:not(.hidden)),
+  html:has(#tab-compose:not(.hidden)),
+  html:has(#tab-audit:not(.hidden)),
+  html:has(#tab-accounts:not(.hidden)) { overflow: hidden; height: 100dvh; }
+  html:has(#tab-inbox:not(.hidden)) body,
+  html:has(#tab-mail:not(.hidden)) body,
+  html:has(#tab-compose:not(.hidden)) body,
+  html:has(#tab-audit:not(.hidden)) body,
+  html:has(#tab-accounts:not(.hidden)) body { overflow: hidden; height: 100dvh; margin: 0; }
+  /* 0015: JS fallback for WebViews without :has()/dvh - app.js toggles
+     html.page-locked and pins --app-vh to a real px innerHeight on every
+     tab switch and resize; same contract as the :has rules above, so
+     the lock never depends on selector support. */
+  html.page-locked { overflow: hidden; height: var(--app-vh, 100dvh); }
+  html.page-locked body { overflow: hidden; height: var(--app-vh, 100dvh); margin: 0; }
+/* Boss order (C correction, rides with B): the accounts summary line is
+   text outside the list — hidden on phones, PC unaffected. */
+#acc-act-sum { display: none; }
+
+
+  #tab-accounts.acc-admin:not(.hidden) {
+    height: auto; min-height: 0; overflow: visible;
+  }
+}
+
+/* Agent-mailbox register zone (superior feedback round 3): on DESKTOP the
+   register button lives above the table (#subreg-pc) and subordinates are
+   leading table rows (.subrow-pc) — no container. Phones keep the
+   container card; .pc-only hides desktop-only blocks there. */
+.pc-only { }
+@media (max-width: 800px) { .pc-only { display: none !important; } }
+/* Phone-only companion (accounts one-screen plan): #acc-m-contacts. */
+.m-only { display: none; }
+.agentreg-row { display: none; }
+.agentreg-cell { padding: 0; }
+.agentreg-card {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 12px; padding: 12px 14px; margin: 10px 0;
+  /* Full content width like the Overview stats groups (superior feedback:
+     640px cap read as too narrow; System/Activity groups are the reference). */
+}
+/* Subordinate account entry — display follows the surrounding grammar
+   (superior feedback): on PC the accounts table shows ROWS (td 8/12,
+   bottom hairline), so the desktop base renders each subordinate as a
+   bare grid row inside the register container (the ONLY difference vs
+   other accounts = living in that container). Phones flip to stacked
+   cards in the mobile block below — source order keeps it winning. */
+.sub-card {
+  display: grid;
+  grid-template-columns: minmax(0, 2.4fr) minmax(0, 1fr) minmax(0, 2.4fr) auto;
+  align-items: center; gap: 12px;
+  padding: 8px 12px;
+  border: none; border-bottom: 1px solid var(--border);
+  border-radius: 0; background: transparent; margin: 0;
+}
+.sub-card:last-child { border-bottom: none; }
+/* (mobile compact helpers .sub-addr/.sub-meta/.sub-sig/.sub-foot/.pill-btn
+   live in the <=800px block below; the container itself is desktop-hidden) */
+/* Subordinate cards stack exactly like the row cards on phones: block
+   layout, same micro-label ::before, same cell rhythm. MUST stay after
+   the flex base rule above — equal specificity, source order wins. */
+@media (max-width: 800px) {
+  /* Phones (one-screen plan): badges + address share ONE line (address
+     marquees on overflow), signature max one line, pill buttons
+     bottom-right; the card list scrolls via .sub-list max-height. */
+  .agentreg-card { padding: 10px 12px; margin-top: 0; } /* 1048i */
+  .sub-card {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0 6px;
+    padding: 7px 9px; margin: 5px 0;
+    border: 1px solid var(--sub-card-border); border-radius: 10px;
+    background: var(--sub-card-bg);
+  }
+  .sub-meta { order: 2; flex: 0 0 auto; }
+  /* 1048h (boss 0924): badges and the worker pill must share one centerline —
+     the square listed chip and the round pill carried different vertical-aligns. */
+  .sub-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.sub-meta .act-pill-slot { display: contents; } /* pill becomes a direct flex item — centers exactly */
+  .sub-meta .hb-pill, .sub-meta .badge-listed, .sub-meta .badge-ext { vertical-align: middle; }
+  .sub-addr { order: 1; flex: 1 1 0; font-size: 13px; min-width: 0; }
+  .sub-sig { order: 3; flex: 1 1 100%; font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .sub-foot { order: 4; flex: 1 1 100%; display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+  button.row-action.pill-btn { font-size: 12px; padding: 3px 14px;
+    border-radius: 999px; min-height: 0; }
+  /* Phone-only contacts list (accounts one-screen plan). */
+  .m-only { display: block; }
+  /* 0.3.3-C full-bleed: no top gap — the list touches the floating header
+     (0.3.3-B bottom-bar block keeps the bar itself fixed). */
+  #acc-m-contacts { overflow-y: auto; margin-top: 0; }
+  /* the regular plan renders the list only; the empty PC table shell (a
+     latent dup-tag on main) would otherwise add a top gap. Admin phones
+     keep the reverted data-label table (.acc-admin). */
+  #tab-accounts:not(.acc-admin) #accounts-table { display: none; }
+  .ct-card {
+    border: 1px solid var(--sub-card-border); border-radius: 10px;
+    background: var(--sub-card-bg); padding: 7px 9px; margin: 5px 0;
+  }
+  .ct-line { display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .ct-addr { font-size: 13px; flex: 1 1 0; order: 1; }
+  .ct-line > .badge-listed { order: 2; flex: 0 0 auto; }
+  .ct-sig { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .ct-foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+}
+
+/* Team register v2 (superior-approved): stepper + member name rows with
+   per-row dice, and the success page credential cards. */
+.team-stepper { display: flex; align-items: center; gap: 10px; margin-top: 4px; }
+.team-stepper button { width: 34px; height: 34px; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--panel); color: var(--text);
+  font-size: 16px; cursor: pointer; }
+.team-stepper .n { font-size: 16px; font-weight: 600; min-width: 22px; text-align: center; }
+.team-members { border: 1px solid var(--border); border-radius: 10px;
+  padding: 10px 12px; margin-bottom: 12px; background: var(--bg); }
+.members-head { display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 8px; }
+.members-head b { font-size: 13px; }
+.members-reroll { font-size: 12px; border: 1px solid var(--border);
+  background: var(--panel); color: var(--text); border-radius: 999px;
+  padding: 3px 12px; cursor: pointer; }
+.team-mrow { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.team-mrow .idx { font-size: 12px; color: var(--muted); width: 46px; flex: 0 0 auto; }
+.team-mrow input { flex: 1; min-width: 0; padding: 6px 10px; font-size: 13px;
+  border: 1px solid var(--border); border-radius: 8px; background: var(--panel);
+  color: var(--text); }
+.team-mrow .dice { border: none; background: transparent; cursor: pointer;
+  font-size: 14px; flex: 0 0 auto; }
+.team-mrow .addr-hint { font-size: 11px; color: var(--muted); margin: -4px 0 8px 54px; }
+/* success cards */
+.cred-card { border: 1px solid var(--border); border-radius: 10px;
+  padding: 10px 14px; margin-bottom: 8px; display: flex; align-items: center;
+  justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.cred-card.owner { border-color: var(--accent); background: rgba(47, 111, 192, 0.06); }
+.cred-card .who { font-size: 12px; color: var(--muted); }
+.cred-card code { font-size: 13px; }
+.cred-card .pw { color: var(--text); font-weight: 600;
+  font-family: ui-monospace, Consolas, monospace; }
+.cred-card .cp { font-size: 12px; border: 1px solid var(--border);
+  background: var(--panel); border-radius: 999px; padding: 3px 12px;
+  cursor: pointer; color: var(--text); }
+.cred-card .btns { display: flex; gap: 6px; }
+.team-copyall { width: 100%; padding: 11px; font-size: 15px; margin-top: 6px; }
+
+/* Preferences cards (v0.6 layout round 2): one stacked card per section,
+   title inside, compose-style wide controls (feedback: previous split
+   h3+card layout read as cluttered and the signature was too narrow). */
+.pref-card { max-width: 640px; }
+.pref-title {
+  margin: 0 0 12px; font-size: 12px; text-transform: uppercase;
+  letter-spacing: 1px; color: var(--muted); font-weight: 600;
+}
+.pref-toggle {
+  display: flex; align-items: center; gap: 8px; margin: 8px 0;
+  font-size: 13px; color: var(--muted); cursor: pointer;
+}
+.pref-toggle input { width: 17px; height: 17px; accent-color: var(--accent); }
+.pref-lang-btn.active {
+  border-color: var(--accent); color: var(--text); font-weight: 600;
+}
+.settings-section.profile-card #profile-signature { max-width: none; min-height: 96px; }
+
+/* My profile visual refresh (feedback): same glass-card language as the
+   portal — card container, airy rows, accent primary button. */
+.settings-section.profile-card {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 14px;
+  padding: 20px 22px; max-width: 640px;
+}
+.settings-section.profile-card .row { margin-bottom: 14px; }
+.settings-section.profile-card input[type="text"] {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+  padding: 9px 12px; color: var(--text); font-size: 14px; width: 100%;
+  max-width: 380px;
+}
+.settings-section.profile-card input[type="text"]:focus {
+  outline: none; border-color: var(--accent);
+}
+.settings-section.profile-card input[type="checkbox"] {
+  width: 17px; height: 17px; accent-color: var(--accent);
+}
+
+@media (max-width: 520px) {
+  /* 16px inputs stop iOS Safari from auto-zooming on focus. */
+  .compose-form input[type="text"],
+  .compose-form input[type="password"],
+  .compose-form textarea,
+  .row input[type="text"],
+  .row input[type="password"],
+  .row input[type="number"],
+  .row select { font-size: 16px; }
+
+  /* Comfortable touch targets (iOS HIG 44px). */
+  button.primary, button.row-action, .btn, .tab { min-height: 44px; }
+
+  /* Give the page a little more room on small screens. */
+  main { margin: 16px auto; padding: 0 14px; }
+  /* 0.3.3-B: content yields >=64px so no page's last row / the compose
+  Send button can ever sit under the fixed bottom bar. Source order after
+  the padding reset above wins the shorthand conflict. */
+  main { padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
+  header { padding: 10px 14px; }
+
+  /* Mobile header (superior-approved layout): line 1 = title + address
+     (address truncates with an ellipsis — or ping-pong scrolls when it
+     overflows, see .marquee), line 2 = language toggle + logout pill,
+     right-aligned. The address lives next to the title in the markup,
+     so wrapping naturally yields the two lines. */
+  .header-row { flex-wrap: wrap; row-gap: 8px; min-width: 0; }
+  /* v2: the right group takes its own single compact row — address left
+     (ellipsis), pills right. */
+  .header-right { flex-basis: 100%; min-width: 0; } /* boss rc2: long address must not push the three pills off-screen - the group itself may shrink */
+  #whoami {
+    flex: 1 1 0; min-width: 0; text-align: left;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .header-right .header-actions { flex-basis: auto; justify-content: flex-end; gap: 8px; min-width: 0; }
+  .header-actions { flex-basis: 100%; justify-content: flex-end; gap: 8px; min-width: 0; }
+}
+
+/* Accessibility: freeze all portal motion when the user prefers reduced
+   motion; content stays fully readable. */
+@media (prefers-reduced-motion: reduce) {
+  .aurora::before, .aurora::after, .glow3, .portal-particle, .bar, .pulse-dot { animation: none !important; }
+  .btn, .dir-card { transition: none !important; }
+  /* Danmaku is pure decoration — hide it rather than freeze mid-flight. */
+  .danmaku { display: none !important; }
+}
+
+/* ============================================================
+   Showcase (v0.4.4): public letters on the guest portal.
+   1) danmaku — glass capsules flying across ~4 rows, display only
+   2) showcase bar — expandable capsule below the directory
+   Data comes from /api/info?query=showcase (mocked until the server
+   ships it); hidden entirely when settings.showcase_enabled === false.
+   ============================================================ */
+/* Danmaku cards (admin-clarified): each flying capsule is a multi-line
+   card — line 1: from + date, line 2: subject, lines 3-4: body preview
+   (2-line clamp). Two lanes in the band; cards drift right-to-left. */
+.danmaku {
+  position: relative; height: 300px; margin: 8px 0 4px;
+  overflow: hidden; pointer-events: none;
+}
+.danmaku .dm {
+  position: absolute; left: 100%; width: 320px; padding: 12px 16px;
+  background: rgba(22, 27, 41, 0.6); border: 1px solid var(--border); border-radius: 14px;
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28);
+  animation: dm-fly linear infinite;
+}
+.danmaku .dm .dm-head {
+  font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: 11px; color: var(--muted);
+  margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.danmaku .dm .dm-subj { font-weight: 600; font-size: 13px; margin-bottom: 6px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.danmaku .dm .dm-body { font-size: 12px; color: var(--muted); line-height: 1.45;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+@media (max-width: 520px) { .danmaku { height: 260px; } .danmaku .dm { width: 280px; } }
+@media (prefers-color-scheme: light) { .danmaku .dm { background: rgba(255,255,255,.65); } }
+html[data-theme="light"] .danmaku .dm { background: rgba(255,255,255,.78); }
+html[data-theme="dark"]  .danmaku .dm { background: rgba(22,27,41,.6); }
+@keyframes dm-fly { from { transform: translateX(0); } to { transform: translateX(calc(-100vw - 100%)); } }
+
+/* Danmaku mode B (v0.4.10): the band becomes a full-viewport backdrop —
+   fixed behind the content (above the aurora, z-index -1), dimmed so it
+   never fights the page copy. The in-flow space collapses to a thin rail
+   hosting the ⚙ control. */
+.danmaku.bg-mode {
+  position: fixed; inset: 0; height: 100vh; margin: 0;
+  opacity: 0.35; z-index: -1;
+}
+/* Cards must drop backdrop-filter in backdrop mode: inside an opacity<1
+   ancestor Chrome fails to composite backdrop-filtered elements (they can
+   vanish entirely — the production "mode B shows nothing" bug). A slightly
+   more opaque plain fill keeps them readable against the aurora. */
+.danmaku.bg-mode .dm {
+  box-shadow: none;
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  background: rgba(22, 27, 41, 0.55);
+}
+@media (prefers-color-scheme: light) {
+  .danmaku.bg-mode .dm { background: rgba(255, 255, 255, 0.55); }
+}
+
+/* Showcase section (admin polish): always open, own topic title like the
+   other portal sections; only individual letters fold. */
+.showcase { margin-top: 26px; }
+.showcase-sub { margin: 0 0 10px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.showcase-admin-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.showcase-list { display: flex; flex-direction: column; gap: 8px; }
+
+.sc-item {
+  background: rgba(22, 27, 41, 0.72); border: 1px solid var(--border); border-radius: 12px;
+  padding: 12px 16px; cursor: pointer; backdrop-filter: blur(10px);
+}
+.sc-item .sc-meta { font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: 12px; color: var(--muted); }
+.sc-item .sc-subj { font-weight: 600; font-size: 14px; margin: 2px 0; }
+.sc-item .sc-body {
+  white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; color: var(--text);
+  font-family: ui-monospace, "SF Mono", Consolas, monospace;
+  background: var(--panel-2); border-radius: 8px; padding: 10px; margin-top: 8px;
+  max-height: 300px; overflow-y: auto;
+}
+@media (prefers-color-scheme: light) { .sc-item { background: rgba(255,255,255,.75); } }
+html[data-theme="light"] .sc-item { background: rgba(255,255,255,.75); }
+html[data-theme="dark"]  .sc-item { background: rgba(22,27,41,.72); }
+
+/* Compose public-showcase toggle (v0.4.4). Must stay horizontal: the bare
+   label selector under .compose-form is column (field rows), so scope with
+   enough specificity to win (admin: keep it aligned with the other row
+   controls). */
+.compose-form .public-toggle,
+.public-toggle {
+  display: inline-flex; flex-direction: row; align-items: center; gap: 6px;
+  font-size: 13px; color: var(--muted); cursor: pointer; user-select: none;
+}
+.public-toggle input { accent-color: var(--accent); width: 16px; height: 16px; cursor: pointer; }
+
+/* Language switch chips (v0.4.12.1): small standalone pill, top-right —
+   visually distinct from CTA/action buttons (feedback). */
+.lang-btn {
+  position: absolute; top: 14px; right: 16px; z-index: 5;
+  background: var(--panel); border: 1px solid var(--border); border-radius: 999px;
+  color: var(--muted); font-size: 12px; font-family: inherit;
+  padding: 4px 12px; cursor: pointer;
+}
+.lang-btn:hover { color: var(--text); border-color: var(--accent); }
+#app-header .lang-btn { position: static; padding: 4px 10px; font-size: 11px; }
+#portal-page { position: relative; }
+
+/* Storage stat: unit in small type inside the big number (v0.4.12.1) —
+   keeps size/baseline aligned with the other stat cards. */
+.stat .stat-unit { font-size: 15px; font-weight: 500; color: var(--muted); }
+
+/* Subordinate declare row (feedback): joined input + button, same
+   visual family as the Cc input. */
+.subs-declare-row { display: flex; gap: 8px; margin: 10px 0; }
+.subs-declare-row input {
+  flex: 1; min-width: 220px; background: var(--panel-2);
+  border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px;
+  font: inherit; color: inherit;
+}
+.subs-declare-row input:focus { border-color: var(--accent); outline: none; }
+#subs-details summary { cursor: pointer; }
+#subs-details p { margin: 8px 0 0; }
+
+/* Cc recipient chips (v0.5.9, vertical layout since follow-up): the
+   input keeps its own row; chips wrap in their own area below it. */
+.cc-input-wrap { position: relative; }
+#compose-cc { width: 100%; }
+.cc-tags {
+  display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px;
+}
+.cc-chip {
+  display: inline-flex; align-items: center; gap: 2px;
+  background: var(--panel); border: 1px solid var(--border); border-radius: 999px;
+  padding: 2px 4px 2px 10px; font-size: 12.5px;
+  font-family: ui-monospace, "SF Mono", Consolas, monospace;
+}
+
+/* Attachments (v0.5.1): chips in compose, cards in message detail. */
+.attach-list { display: flex; flex-direction: column; gap: 6px; margin: 6px 0; }
+.attach-card {
+  display: inline-flex; align-items: center; gap: 10px;
+  /* Narrow-screen squeeze (superior): without wrapping, the flex row
+     over-constrains and the filename collapses to a one-char column.
+     Wrapping lets size/TTL/buttons drop to a second line instead, and the
+     name keeps a sane horizontal box (flex-basis holds it above min-content). */
+  flex-wrap: wrap;
+  background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px;
+  padding: 6px 10px; font-size: 13px; max-width: 100%;
+}
+.attach-card.attach-error { border-color: var(--error); }
+.attach-clip { flex: 0 0 auto; }
+.attach-name { flex: 1 1 14em; min-width: 0;
+  font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: 12px;
+  overflow-wrap: anywhere; }
+.attach-size { color: var(--muted); font-size: 11px; flex: 0 0 auto; }
+/* Compact actions on attachment cards (superior): the generic row-action
+   padding dominates narrow cards — scope a tighter variant here, other
+   .row-action surfaces are untouched. The buttons live in one unbreakable
+   group so a narrow card wraps the PAIR to the next line together, never
+   splitting Download from Read PDF across lines. */
+.attach-card .row-action { padding: 3px 9px; font-size: 12px; min-height: 0; }
+.attach-actions { display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+.attach-x {
+  background: transparent; border: none; color: var(--muted); cursor: pointer;
+  font-size: 15px; line-height: 1; padding: 0 2px;
+  align-self: center; display: inline-flex; align-items: center; height: 20px;
+}
+.attach-x:hover { color: var(--error); }
+
+/* Logout pill (superior-approved): same family as the language toggle —
+   same track/radius/height (28px, matched to .lang-toggle incl. border),
+   hover turns red to signal exit. */
+.btn-logout-pill {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 0 10px; height: 26px; border-radius: 999px;
+  background: var(--panel-2); border: 1px solid var(--border);
+  color: var(--muted); font-size: 12px; cursor: pointer; line-height: 1;
+  font-family: inherit;
+}
+.btn-logout-pill:hover { color: var(--error); border-color: var(--error); background: var(--panel); }
+/* Prefs pill (v0.6.9): opens the nav-less profile panel — same family as
+   the logout pill, neutral hover. */
+.btn-pref-pill {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 0 10px; height: 26px; border-radius: 999px;
+  background: var(--panel-2); border: 1px solid var(--border);
+  color: var(--muted); font-size: 12px; cursor: pointer; line-height: 1;
+  font-family: inherit;
+}
+.btn-pref-pill:hover { color: var(--text); border-color: var(--accent); background: var(--panel); }
+
+/* Attachment management card (v2, superior-approved): native <details> fold
+   (same disclosure triangle as the subordinate section) + compact
+   single-line rows shared by desktop and mobile. */
+#am-details summary { cursor: pointer; }
+/* superior 09-05: pull the fold line a bit closer to its card title. */
+#attach-mgmt-card .pref-title, #board-mgmt-card .pref-title { margin-bottom: 6px; }
+#am-details summary #am-sum { font-size: 12px; color: var(--muted);
+  font-family: ui-monospace, Consolas, monospace; }
+.am-body { margin-top: 10px; }
+.quota-bar { height: 5px; border-radius: 999px; background: var(--panel-2);
+  overflow: hidden; margin-bottom: 8px; }
+.quota-bar i { display: block; height: 100%; background: var(--accent); }
+.am-row { display: flex; align-items: center; gap: 8px; padding: 5px 0;
+  border-bottom: 1px solid var(--border); font-size: 13px; }
+.am-row:last-child { border-bottom: none; }
+.am-row.expired .fn, .am-row.expired .meta { opacity: .55; }
+.am-row .fn { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; }
+.am-row .meta { flex: 0 0 auto; font-size: 11px; color: var(--muted);
+  font-family: ui-monospace, Consolas, monospace; }
+.am-row .meta .soon { color: var(--error); }
+.am-row .btns { flex: 0 0 auto; display: flex; gap: 6px; }
+.am-mini { font-size: 11px; padding: 2px 10px; border-radius: 999px;
+  border: 1px solid var(--border); background: var(--panel); cursor: pointer;
+  color: var(--muted); }
+.am-mini:hover { color: var(--text); border-color: var(--accent); }
+.am-mini.del:hover { color: var(--error); border-color: var(--error); }
+.confirm-tip { font-size: 11px; color: var(--muted); margin: 8px 0 0; }
+@media (max-width: 520px) {
+  .am-row { flex-wrap: wrap; }
+  .am-row .fn { flex: 1 1 100%; }
+  .am-row .meta { flex: 1 1 auto; }
+}
+
+/* Language switch: segmented pill (superior reference image) — a rounded
+   track with 中 / EN segments; the active language sits on a raised pill.
+   Replaces the old text button (.lang-inline retired). */
+.lang-toggle {
+  display: inline-flex; align-items: center; gap: 2px; vertical-align: 2px;
+  margin-left: 6px; padding: 2px; border-radius: 999px;
+  background: var(--panel-2); border: 1px solid var(--border);
+  cursor: pointer; font-family: inherit; line-height: 1;
+}
+.lang-toggle .seg {
+  font-size: 12px; padding: 4px 10px; border-radius: 999px;
+  color: var(--muted); background: transparent; transition: color .15s;
+}
+.lang-toggle .seg.on {
+  background: var(--panel); color: var(--text); font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+}
+
+/* Attachment image preview (v0.5.2): thumbnails below the card row. */
+.attach-card-img, .attach-card-audio { flex-wrap: wrap; }
+/* Audio player (feedback): tighter default height than the native ~54px. */
+.attach-card-audio audio { height: 40px; margin-top: 6px; }
+.attach-preview { flex: 1 1 100%; margin-top: 8px; }
+.attach-preview img {
+  display: block; max-height: 240px; max-width: 100%;
+  border-radius: 8px; border: 1px solid var(--border);
+  cursor: pointer;
+}
+.attach-preview img:hover { border-color: var(--accent); }
+
+/* Markdown attachment preview (superior, point-to-point): rendered inline
+   below the card row. Height is capped at 25% of the viewport (superior
+   constraint) and scrolls internally, so even a huge doc never dominates
+   the screen. Sanitized upstream (marked + DOMPurify, img/style stripped). */
+.md-body {
+  max-height: 25vh; overflow: auto;
+  background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+  padding: 10px 14px; font-size: 13px; line-height: 1.55; color: var(--text);
+}
+.md-body > :first-child { margin-top: 0; }
+.md-body > :last-child { margin-bottom: 0; }
+.md-body h1, .md-body h2, .md-body h3, .md-body h4 { margin: 0.7em 0 0.35em; line-height: 1.3; }
+.md-body h1 { font-size: 1.35em; } .md-body h2 { font-size: 1.2em; }
+.md-body h3 { font-size: 1.08em; } .md-body h4 { font-size: 1em; }
+.md-body p, .md-body ul, .md-body ol, .md-body blockquote, .md-body table, .md-body pre { margin: 0.5em 0; }
+.md-body ul, .md-body ol { padding-left: 1.4em; }
+.md-body blockquote { border-left: 3px solid var(--border); padding: 2px 0 2px 10px; color: var(--muted); }
+.md-body code { font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: 0.92em;
+  background: var(--panel-2); border-radius: 4px; padding: 1px 5px; }
+.md-body pre { background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px;
+  padding: 8px 10px; overflow: auto; }
+.md-body pre code { background: transparent; padding: 0; }
+.md-body table { border-collapse: collapse; }
+.md-body th, .md-body td { border: 1px solid var(--border); padding: 4px 8px; font-size: 12px; }
+.md-body th { background: var(--panel-2); }
+.md-body hr { border: none; border-top: 1px solid var(--border); margin: 0.8em 0; }
+.md-body a { color: var(--accent); }
+.md-body-raw { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
+.md-body-letter {
+  margin-top: 6px;
+  /* Letter body is a reading surface (superior 09-04): it must NOT inherit
+     the attachment-preview 25vh cap — it flows full-length; the enclosing
+     detail pane owns scrolling. */
+  max-height: none; height: auto; overflow: visible;
+}
+
+/* Markdown lightbox (superior): same dimmed shell as the PDF reader; the
+   document fills the frame and scrolls, free of the inline 25vh cap. */
+.md-lightbox-frame { background: var(--panel); }
+.md-lightbox-frame .md-body {
+  max-height: none; height: 100%;
+  border: none; border-radius: 8px; background: transparent;
+}
+
+/* Image fullscreen overlay (feedback): click a preview to view it
+   full-screen; click anywhere or press Esc to close. */
+.img-lightbox {
+  position: fixed; inset: 0; z-index: 300;
+  background: rgba(0, 0, 0, 0.82);
+  display: flex; align-items: center; justify-content: center;
+  cursor: zoom-out; padding: 24px;
+}
+.img-lightbox img {
+  max-width: 92vw; max-height: 88vh;
+  border-radius: 8px; box-shadow: 0 8px 48px rgba(0, 0, 0, 0.55);
+  cursor: default;
+}
+/* Explicit download button (superior feedback: the image itself must not
+   download on click). Bottom-center, glass style, above the picture. */
+.img-lightbox-dl {
+  position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%);
+  padding: 8px 18px; border-radius: 8px; cursor: pointer;
+  background: rgba(255, 255, 255, 0.12); color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  backdrop-filter: blur(6px); font-size: 13px;
+}
+.img-lightbox-dl:hover { background: rgba(255, 255, 255, 0.22); }
+@media (prefers-reduced-motion: reduce) { .img-lightbox { animation: none; } }
+
+/* Image lightbox zoom (superior 01M1B6J5W): the lightbox img is
+   transform-driven (JS); touch-action none keeps page gestures out of the
+   way while pinching. */
+.img-lightbox img { touch-action: none; cursor: zoom-in; will-change: transform; }
+
+/* PDF reader overlay (superior, point-to-point): dimmed fullscreen like
+   the image lightbox, with a reader window one size smaller than the
+   viewport. The iframe eats clicks, so closing goes through the × button,
+   the backdrop, or Esc; the download button mirrors the image lightbox. */
+.pdf-lightbox {
+  position: fixed; inset: 0; z-index: 300;
+  background: rgba(0, 0, 0, 0.82);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px; cursor: zoom-out;
+}
+.pdf-lightbox-frame {
+  width: 92vw; height: 88vh;
+  background: #fff; border-radius: 8px;
+  box-shadow: 0 8px 48px rgba(0, 0, 0, 0.55);
+  overflow: hidden; cursor: default;
+}
+.pdf-lightbox-frame iframe { width: 100%; height: 100%; border: 0; }
+.pdf-lightbox-x {
+  position: absolute; top: 18px; right: 22px;
+  width: 36px; height: 36px; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12); color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  backdrop-filter: blur(6px); font-size: 20px; line-height: 1;
+  cursor: pointer;
+}
+.pdf-lightbox-x:hover { background: rgba(255, 255, 255, 0.22); }
+/* Phone layout (superior): × sits beside the download button in one
+   bottom-center bar (in-bar buttons go static); desktop keeps × top-right. */
+.pdf-lightbox-bar {
+  position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 8px;
+}
+.pdf-lightbox-bar .pdf-lightbox-x { position: static; }
+.pdf-lightbox-bar .img-lightbox-dl { position: static; transform: none; }
+@media (prefers-reduced-motion: reduce) { .pdf-lightbox { animation: none; } }
+
+/* Attachment TTL badge (v0.5.3). */
+.attach-ttl { flex: 0 0 auto; font-size: 11px; color: var(--muted); }
+.attach-ttl-over { color: var(--error); }
+
+/* Inbox prev/next (v0.5.4.1): visible on every width — desktop readers
+   want it too (feedback). The pager-hide stays phone-only (tabs layout).
+   (v0.5.19, superior-approved) The two buttons form one compact pill in
+   its own band above the letter; the letter body scrolls in a separate
+   region below (#inbox-detail / #mail-detail are flex columns), so the
+   buttons never overlap content and never scroll away. The Manage >
+   Messages detail (#mail-detail) shares the pattern (superior's request:
+   prev/next there too, same style). */
+#inbox-detail, #mail-detail { display: flex; flex-direction: column; }
+.detail-scroll {
+  overflow-y: auto; min-height: 0; flex: 1;
+}
+@media (max-width: 800px) {
+  /* Keep tabs + pill on screen: the letter scrolls inside this region. */
+  .detail-scroll { max-height: calc(100vh - 250px); min-height: 180px; }
+}
+.inbox-nav {
+  display: inline-flex; flex: 0 0 auto; align-self: flex-start;
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 999px; overflow: hidden; margin: 0 0 10px;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.14);
+}
+.inbox-nav .row-action {
+  border: none; border-radius: 0;
+  padding: 4px 12px; font-size: 12px; min-height: 0;
+}
+.inbox-nav .row-action + .row-action { border-left: 1px solid var(--border); }
+/* 0016..0018 (boss directives): the List|Message tab control is gone on
+   both dual-pane pages; back is a STANDALONE button left of the prev/next
+   pill, styled as its twin (same panel bg, border, radius, shadow and
+   type) - same look, own hit area. Dual pane only exists <=800px, so the
+   button is PC-hidden. */
+.inbox-navband {
+  display: flex; align-items: center; gap: 8px;
+  align-self: flex-start; margin: 0 0 10px;
+}
+.inbox-navband .inbox-nav { margin: 0; }
+.pane-back { display: none; }
+@media (max-width: 800px) {
+  /* The pager belongs to the List tab; hide it while reading a message. */
+  /* 分页控件 09-04 挪入网格后不再是网格兄弟节点——补子选择器，
+     Message 模式（列表隐藏）下分页条照旧隐藏 */
+  #inbox-grid.mshow-detail ~ .inbox-pager,
+  #inbox-grid.mshow-detail > .inbox-pager { display: none; }
+  .pane-back {
+    display: inline-block; padding: 4px 14px; min-height: 0; line-height: 17px;
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 999px; overflow: hidden;
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.14);
+    font-size: 12px; color: var(--text); cursor: pointer;
+  }
+  .pane-back:active { background: rgba(100, 116, 139, 0.14); }
+}
+
+/* Inbox unread badge (v0.5.5): pure red dot, absolutely positioned so it
+   never contributes to the tab's text width (feedback: no layout shift). */
+.tab { position: relative; }
+.tab-badge {
+  position: absolute; top: 4px; right: 0;
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--error);
+}
+
+/* Superior 01M1E6A1F: on PC the Overview segment is Data | Directory — the
+   phone-only System/Mine buttons hide and the Data label shows instead. */
+#ovw-seg .pc-ovw-data { display: none; }
+@media (min-width: 801px) {
+  #ovw-seg .m-ovw-system { display: none; }
+  #ovw-seg [data-oview="mine"] { display: none; }
+  #ovw-seg .pc-ovw-data { display: inline-block; }
+}
+
+/* ===== v0.6 mail management views ===== */
+/* Segment capsule switching Messages | Overview (same family as the
+   language toggle). Content-hugging width; both segments equal padding. */
+.mgmt-seg {
+  display: inline-flex; padding: 2px; border-radius: 999px;
+  background: var(--panel-2); border: 1px solid var(--border);
+  margin: 0 0 12px;
+}
+.mgmt-seg button {
+  font-size: 12px; padding: 4px 16px; border-radius: 999px;
+  border: none; background: transparent; color: var(--muted);
+  cursor: pointer; font-family: inherit; line-height: 1.4;
+}
+.mgmt-seg button.on {
+  background: var(--panel); color: var(--text); font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+}
+
+/* Subs overview: full-width table on desktop, data-label cards on mobile
+   (same grammar as the Accounts table). */
+.mgmt-sum { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+.mgmt-refresh { min-height: 0; padding: 2px 10px; font-size: 11px; margin-left: 8px; }
+.mgmt-ovw { width: 100%; border-collapse: collapse; font-size: 13px; }
+.mgmt-ovw th {
+  text-align: left; font-size: 12px; text-transform: uppercase;
+  letter-spacing: .5px; color: var(--muted); padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+}
+.mgmt-ovw td { padding: 8px; border-bottom: 1px solid var(--border); }
+.mgmt-ovw tbody tr { cursor: pointer; }
+.mgmt-ovw tbody tr:hover td { background: var(--panel-2); }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+  margin-right: 5px; vertical-align: 1px; }
+.dot.green { background: #2e9e5b; }
+.dot.yellow { background: #d9a419; }
+.dot.idle { background: var(--muted); opacity: .5; }
+.mgmt-empty {
+  border: 1px dashed var(--border); border-radius: 8px;
+  padding: 18px 14px; text-align: center; color: var(--text);
+}
+.mgmt-empty .sub { color: var(--muted); font-size: 12px; margin-top: 4px; }
+.mgmt-empty .row-action { min-height: 0; padding: 3px 12px; font-size: 12px; margin-top: 8px; }
+@media (max-width: 520px) {
+  .mgmt-ovw th { display: none; }
+  .mgmt-ovw tbody tr { display: block; border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px; margin-bottom: 8px; }
+  .mgmt-ovw td { display: block; border: none; padding: 2px 0; }
+  .mgmt-ovw td::before {
+    content: attr(data-label); color: var(--muted);
+    font-size: 11px; margin-right: 6px;
+  }
+}
+
+/* Connections graph inside the Overview view (force-directed, vis-network,
+   N2 label blocks + A4 volume-scaled arrows — superior-selected combo). */
+.mgmt-graph-title {
+  font-size: 12px; text-transform: uppercase; letter-spacing: .5px;
+  color: var(--muted); margin: 18px 0 8px;
+}
+/* Floating graph controls (superior request): circular buttons overlaid ON
+   the canvas — a DOM layer above the vis-network surface, so they never
+   move with pan/zoom. Vertical stack, top-right of the graph. */
+.mgmt-graph-wrap {
+  position: relative;
+}
+.mgmt-graph-controls.overlay {
+  position: absolute; top: 10px; right: 10px; z-index: 5;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.gg-btn {
+  width: 42px; height: 42px; border-radius: 50%;
+  border: 1px solid var(--border); background: var(--panel);
+  color: var(--text); font-size: 12px; line-height: 1.1;
+  cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,.15);
+  display: flex; align-items: center; justify-content: center;
+  padding: 0; text-align: center;
+}
+.gg-btn:hover { border-color: var(--accent, #3b82f6); }
+/* 播放模式当前信浮层（上级 0.2.5）：左下角、指针穿透、画布之上 */
+.play-badge {
+  position: absolute; left: 10px; bottom: 10px; z-index: 6;
+  max-width: calc(100% - 20px); overflow: hidden; text-overflow: ellipsis;
+  background: rgba(37, 99, 235, 0.92); color: #fff;
+  font-size: 11px; line-height: 1.4; padding: 3px 8px;
+  border-radius: 6px; pointer-events: none; white-space: nowrap;
+}
+/* 停止态 ■ 放大一档（上级 09-03：原字号下 ■ 视觉上比 ▶ 小太多） */
+#gg-play.is-stop { font-size: 16px; line-height: 1; }
+.gg-btn { white-space: nowrap; overflow: hidden; flex: 0 0 auto; }
+.gg-btn.off { opacity: .45; }         /* numbers hidden state */
+.gg-btn-days { font-size: 11px; font-weight: 600; }
+/* 1048f: links page graph fills the freed space — the fit in overview.js
+   sets #mgmt-graph-wrap height to the viewport rest; the fixed heights
+   below remain only as the pre-fit fallback. */
+#mgmt-graph-wrap > .mgmt-graph { height: 100%; }
+.mgmt-graph {
+  /* +40% vertical (superior feedback): 380 -> 532 PC, 300 -> 420 phones. */
+  height: 532px; border: 1px solid var(--border); border-radius: 8px;
+  background: var(--panel); touch-action: none;
+}
+@media (max-width: 520px) {
+  .mgmt-graph { height: 420px; }
+}
+
+/* Modern text inputs (v0.6.3 feedback: search box + register-name field
+   should look like the rest of the app's inputs, comfortably sized).
+   Applies the compose-form look to the standalone search/name fields. */
+input[type="search"].app-input, input[type="text"].app-input {
+  background: var(--panel); color: var(--text);
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 9px 12px; font-size: 14px; font-family: inherit;
+  box-sizing: border-box;
+}
+input[type="search"].app-input:focus, input[type="text"].app-input:focus {
+  outline: none; border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+/* Liveness threshold controls (v0.6.8 feedback: match the admin-settings
+   input rows — label + number input + unit inline, .app-input look). */
+.pref-lv-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; padding: 8px 0;
+}
+/* Liveness rows v2 (superior request): tier chip (dot + name) with a muted
+   one-line meaning underneath; the input keeps its unit beside it. On
+   phones the row stacks instead of wrapping label/input/unit into a mess. */
+.pref-lv-label { font-size: 13px; color: var(--text); display: block; min-width: 0; }
+.lv-name { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+.lv-desc { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
+.lv-ctrl { display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+.lv-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.lv-dot-green { background: var(--success); }
+.lv-dot-yellow { background: #d6a63c; }
+.pref-num {
+  width: 90px; padding: 7px 8px; font-size: 14px; font-family: inherit;
+  border: 1px solid var(--border); border-radius: 8px; background: var(--panel);
+  color: var(--text); text-align: center; box-sizing: border-box;
+}
+.pref-num:focus {
+  outline: none; border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+@media (max-width: 520px) {
+  .pref-lv-row { flex-direction: column; align-items: stretch; gap: 6px; }
+  .lv-ctrl { justify-content: flex-start; }
+  .pref-num { min-height: 44px; width: 96px; }
+}
+
+/* Register-subordinate ask modal (v0.6 named option): radio pair + name
+   field + live address preview + inline error. */
+.regopt { display: flex; flex-direction: column; gap: 10px; margin: 12px 0; }
+.regopt label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.regopt input[type="radio"] { accent-color: var(--accent); }
+.named-row { display: flex; gap: 8px; align-items: center; margin: 2px 0 0 24px; }
+.named-row input[type="text"] { flex: 1; }
+.addr-prev { margin: 4px 0 0 24px; font-size: 12px; color: var(--muted);
+  font-family: ui-monospace, Consolas, monospace; }
+.reg-err { color: var(--error); font-size: 12px; margin-left: 24px; }
+
+/* Thread reply reference (v0.6.16): the ↩ "in reply to ‹parent›" row above
+   a letter body in the message detail panes. */
+.reply-ref a { color: var(--accent); text-decoration: none; font-weight: 600; }
+.reply-ref a:hover { text-decoration: underline; }
+
+/* PWA standalone (v0.6.24 shell): when launched from the home screen the
+   black-translucent status bar overlays the page — pad the safe areas. */
+@media (display-mode: standalone) {
+  body {
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+
+/* ===== Threads (topics) view — third mgmt segment ===== */
+#mgmt-threads { max-width: 640px; }
+.th-topic { background: var(--panel, #fff); border: 1px solid var(--border); border-radius: 8px;
+  padding: 10px; margin-bottom: 10px; cursor: pointer; overflow: hidden; }
+#mgmt-threads .th-hd { min-width: 0; }
+.th-topic:hover { background: #f6f9ff; }
+.th-row { display: flex; gap: 8px; align-items: baseline; font-size: 13px; min-width: 0; }
+.th-who { font-weight: 600; }
+.th-subj { font-size: 12px; font-family: ui-monospace, Consolas, monospace;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1 1 auto; min-width: 0; }
+.th-when { margin-left: auto; font-size: 11px; color: var(--muted); white-space: nowrap; }
+.th-pv { font-size: 12px; color: var(--muted); margin-top: 2px; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; }
+.th-arrow { text-align: center; color: var(--muted); font-size: 11px; margin: 4px 0; }
+.th-leaf { margin-top: 4px; padding-top: 4px; border-top: 1px dashed var(--border); }
+.th-lone { display: inline-block; margin-top: 4px; font-size: 11px; color: var(--muted);
+  background: #f2f4f7; border-radius: 6px; padding: 2px 8px; }
+.th-meta { font-size: 11px; color: var(--muted); margin-top: 6px; }
+.th-more { display: block; width: 100%; padding: 8px; font-size: 12px; border: none;
+  background: #f2f4f7; color: var(--muted); cursor: pointer; }
+.th-back { display: inline-block; font-size: 12px; color: var(--accent, #3b82f6);
+  cursor: pointer; padding: 8px 10px; }
+.th-rail { background: var(--panel, #fff); border: 1px solid var(--border);
+  border-radius: 8px; padding: 6px 0; }
+.th-msg { padding: 8px 10px; border-left: 2px solid transparent; }
+.th-msg:hover { background: #f6f9ff; border-left-color: var(--accent, #3b82f6); cursor: pointer; }
+.th-hd { display: flex; gap: 8px; align-items: baseline; font-size: 12px;
+  color: var(--muted); flex-wrap: wrap; }
+.th-arr { color: var(--muted); }
+.th-reply { color: var(--muted); font-size: 11px; }
+.th-badge { font-size: 10px; padding: 1px 6px; border-radius: 999px;
+  background: #eaf1fe; color: #1d4ed8; }
+.th-body { margin-top: 4px; font-size: 13px; line-height: 1.5; background: #f8fafc;
+  border: 1px solid var(--border); border-radius: 8px; padding: 8px;
+  white-space: pre-wrap; word-break: break-word; }
+.th-gap { margin-left: 18px; padding: 6px 10px; font-size: 12px; color: #a4762a;
+  background: #fdf6e7; border-radius: 6px; }
+
+/* Threads fold/expand toggle (compose-thread pattern per superior) */
+.th-toggle { display: inline-block; width: 18px; font-size: 11px; cursor: pointer;
+  color: var(--muted); text-align: center; flex-shrink: 0; }
+.th-toggle:hover { color: var(--accent, #3b82f6); }
+.th-full { margin-top: 6px; padding: 8px; background: #f8fafc; border: 1px solid var(--border);
+  border-radius: 8px; font-size: 13px; line-height: 1.5; white-space: pre-wrap;
+  word-break: break-word; }
+.th-full.hidden { display: none; }
+
+.th-pag { display: flex; align-items: center; justify-content: center;
+  gap: 10px; margin-top: 12px; padding: 8px 0; }
+.th-page-info { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.th-more { font-size: 12px; padding: 4px 12px; border-radius: 999px;
+  border: 1px solid var(--border); background: var(--panel); color: var(--text);
+  cursor: pointer; white-space: nowrap; }
+.th-more:hover { border-color: var(--accent, #3b82f6); color: var(--accent, #3b82f6); }
+
+.th-filter { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+.th-filter-btn { font-size: 11px; padding: 3px 10px; border-radius: 999px;
+  border: 1px solid var(--border); background: var(--panel); color: var(--text);
+  cursor: pointer; }
+.th-filter-btn.on { background: var(--accent, #3b82f6); border-color: var(--accent, #3b82f6); color: #fff; }
+.th-filter-btn:hover:not(.on) { border-color: var(--accent, #3b82f6); }
+.th-peek { margin-top: 3px; font-size: 12px; color: var(--muted);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* ---- 话题森林视图（forest.js，v0.6.31 superior-approved v7 mock）----
+   横向=d3 tidy-tree（vendor/d3-hierarchy），纵向=信件真实时刻。 */
+.th-viewseg { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+#tf-ctl { display: inline-flex; gap: 6px; align-items: center; }
+.f-pill { font-size: 11px; padding: 3px 12px; border-radius: 999px; border: 1px solid var(--border);
+  background: transparent; color: var(--text); cursor: pointer; }
+.f-pill.on { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+/* Item 2 (superior 01M15DZT9): full-bleed breakout is done in JS
+   (forest.js fLayout) — CSS vw calc breaks inside grid columns and pushed
+   the left edge off-page (superior 01M176QXG). Height stays viewport-based. */
+#tf-scroll { position: relative; overflow: auto; background: var(--panel);
+  border: 1px solid var(--border); border-radius: 10px;
+  height: max(640px, calc(100vh - 240px)); }
+#tf-canvas { position: relative; touch-action: none;
+  user-select: none; -webkit-user-select: none; }
+#tf-links { position: absolute; inset: 0; width: 100%; height: 100%; }
+.f-card { position: absolute; width: 224px; border-radius: 8px; padding: 6px 9px;
+  font-size: 11px; line-height: 1.45; box-shadow: 0 1px 2px rgba(20,30,60,.08); cursor: pointer; }
+.f-card:hover { outline: 2px solid var(--accent); }
+.f-card.sel { outline: 2px solid var(--accent); box-shadow: 0 2px 8px rgba(59,130,246,.35); cursor: grab; }
+.f-card.sel:active { cursor: grabbing; }
+.f-head { font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: 10px; color: var(--muted); }
+.f-subj { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.f-body { color: #33404d; font-size: 10.5px; margin-top: 1px;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+/* Item 3 (superior 01M15DKW1): on-canvas floating row-density slider,
+   graph-overlay button style — sits outside the transformed canvas so it
+   stays put while panning/zooming. */
+#tf-bar { position: sticky; top: 10px; z-index: 5; display: flex;
+  align-items: center; gap: 8px; padding: 0 12px; height: 34px; }
+#tf-bar .f-fbtn { width: 42px !important; min-width: 42px !important; max-width: 42px !important;
+  height: 42px !important; border-radius: 50% !important; box-sizing: border-box !important;
+  border: 1px solid var(--border); background: var(--panel);
+  color: var(--text); font-size: 11px !important; line-height: 1.1;
+  cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,.15);
+  display: flex; align-items: center; justify-content: center; padding: 0 !important;
+  white-space: nowrap; overflow: hidden; flex: 0 0 auto !important; }
+#tf-bar .f-fbtn:hover { border-color: var(--accent, #3b82f6); }
+/* Superior 01M1DGKQ: on phones the forest viewport is plain full-width CSS —
+   the PC breakout inline margins must never land here (they re-measure to
+   shifted geometry when the view re-renders, canvas drifts off-center). */
+@media (max-width: 800px) {
+  #tf-scroll { margin-left: 0 !important; width: auto !important; max-width: none; }
+}
+#tf-bar .f-fbtn.on { border-color: var(--accent, #3b82f6); color: var(--accent); font-weight: 600; }
+#tf-bar .f-fbtn.off { opacity: .45; }
+#tf-density { display: flex;
+  align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px;
+  border: 1px solid var(--border); background: rgba(255,255,255,.92); font-size: 12px;
+  box-shadow: 0 1px 4px rgba(20,30,60,.12); }
+#tf-density input[type="range"] { width: 110px; accent-color: var(--accent, #3b82f6); }
+
+/* ---- Header address ticker (superior 01M1239C: classic marquee, all
+   viewports). Over-wide address scrolls continuously right-to-left so
+   every character passes through view once per cycle; short addresses
+   never get the class and stay static. Reduced-motion users keep the
+   plain ellipsis (guard in maybeMarqueeWhoami). ---- */
+#whoami.marquee { text-overflow: clip; }
+#whoami.marquee .wm-txt {
+  display: inline-block;
+  animation: wm-ticker var(--wm-dur, 14s) linear infinite;
+}
+@keyframes wm-ticker {
+  0%   { transform: translateX(var(--wm-start, 100%)); }
+  88%  { transform: translateX(var(--wm-end, -100%)); }
+  100% { transform: translateX(var(--wm-end, -100%)); }
+}
+
+#tf-axis .f-cap { position: absolute; left: 6px; bottom: 6px; writing-mode: vertical-rl; letter-spacing: 2px; }
+
+#tf-axis .f-status { position: absolute; left: 6px; bottom: 6px; writing-mode: vertical-rl; letter-spacing: 2px; color: var(--muted); }
+
+#tf-axis .f-status { position: absolute; left: 6px; bottom: 6px; writing-mode: vertical-rl; letter-spacing: 2px; color: var(--muted); }
+
+/* site-copy settings form (v0.1.3, admin-only) */
+.sc-grid { display: grid; grid-template-columns: auto 1fr 1fr; gap: 6px 10px; align-items: center; }
+.sc-grid .sc-lbl { font-size: 12px; color: var(--text); }
+.sc-grid input { font-size: 12px; padding: 5px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--panel); color: var(--text); }
+@media (max-width: 600px) { .sc-grid { grid-template-columns: 1fr; } .sc-grid .sc-lbl { margin-top: 4px; } }
+
+/* site-copy settings form (v0.1.3, admin-only) */
+.sc-grid { display: grid; grid-template-columns: auto 1fr 1fr; gap: 6px 10px; align-items: center; }
+.sc-grid .sc-lbl { font-size: 12px; color: var(--text); }
+.sc-grid input { font-size: 12px; padding: 5px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--panel); color: var(--text); }
+@media (max-width: 600px) { .sc-grid { grid-template-columns: 1fr; } .sc-grid .sc-lbl { margin-top: 4px; } }
+
+/* Superior 01M18DQQ3 (mobile): the corner-hugging lang pill gets pushed
+   off-screen by the long Mail of Agents word — on small screens drop it
+   below the headline, centered, snug above the tagline. */
+@media (max-width: 600px) {
+  .portal-title { margin-bottom: 46px; }
+  .portal-title .lang-toggle {
+    position: absolute; left: 50%; bottom: -34px; transform: translateX(-50%);
+    margin: 0;
+  }
+}
+
+/* Inbox mode pill (superior 01M18D521): segmented receive/sent/all control.
+   Restyled onto the .mgmt-seg capsule grammar (superior 01M1C2C3K): padded
+   track + rounded thumb, matching Overview/Manage switches; no own margin
+   because the pill sits inline beside the search box. */
+.seg-pill { display: inline-flex; padding: 2px; border-radius: 999px; background: var(--panel-2); border: 1px solid var(--border); }
+.seg-pill button { font-size: 12px; padding: 4px 16px; border-radius: 999px; border: none; background: transparent; color: var(--muted); cursor: pointer; font-family: inherit; line-height: 1.4; }
+.seg-pill button.on { background: var(--panel); color: var(--text); font-weight: 600; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18); }
+
+/* Expanded card (superior 0.1.7 v2, Iris d771548): selected card + click = full text with a scrollable region; click again collapses. Multiple cards may stay expanded; card keeps its 224px width. */
+.f-card.expanded { z-index: 3; }
+.f-card.expanded .f-body { display: block; -webkit-line-clamp: unset; white-space: normal; max-height: 672px; overflow-y: auto; }
+
+/* Canvas text selection (superior 08-31, Iris): canvas-wide drag must not
+   select text; an expanded card opts back in so its body stays copyable. */
+.f-card.expanded { user-select: text; -webkit-user-select: text; }
+
+
+/* Superior 08-31: one-screen inbox on phones — the page itself does not
+   scroll; the active pane is the scroll container and the pager stays
+   visible at the bottom (List view). Height comes from JS (--inbox-1s)
+   because the header/nav wrap differently per language and rotation. */
+/* Superior 09-01 (01M1D393PY): one-screen Overview on phones — compact
+   groups, capped growth chart; Recent activity section removed (regular
+   accounts see no real content there). */
+@media (max-width: 800px) {
+  #tab-overview h3 { margin: 12px 0 6px; }
+  #tab-overview .stats { margin-bottom: 8px; }
+  #ovw-growth-card { margin-top: 10px !important; padding: 12px 14px; }
+  #ovw-growth-bars { height: 96px; }
+  #ovw-growth-card .bar .tip { font-size: 10px; }
+  #personal-card { margin-top: 0; }
+}
+
+/* Superior 09-01 (01M1D7QBV): Mail-manage page, mobile only — PC unchanged.
+   Title rows out (manage/overview/directory); Folder+Limit share a line and
+   Load+search the next (display:contents dissolves the two rows into one
+   column without touching the PC flat row); threads list gets a measured
+   one-screen scroll column and the forest viewport aligns to it; manage
+   overview stacks the subs table (scrolling) above the connections graph,
+   one screen total. */
+@media (max-width: 800px) {
+  /* Superior 01M1DGKQ: forest viewport full-width by CSS on phones — the PC
+     breakout inline margins must never land here (canvas drifts off-center). */
+  #tf-scroll { margin-left: 0 !important; width: auto !important; max-width: none; }
+
+  #tab-mail > h2 { display: none; }
+  #tab-overview > h2 { display: none; }
+  #ovw-directory > h2 { display: none; }
+
+  /* One-screen browse (superior 09-01, ref. inbox): the sub-page is a
+     measured column; the mail grid is the flexible scroll region. */
+  #mgmt-browse:not(.hidden) {
+    display: grid; grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto auto auto auto minmax(0, 1fr);
+    height: var(--mgmt-b-1s, calc(100dvh - 320px));
+    min-height: 280px;
+    gap: 0 8px; align-items: center;
+  }
+  #mgmt-browse > .row { display: contents; }
+  #mgmt-browse > .row > label:first-of-type { grid-column: 1 / -1; order: 1; margin-bottom: 8px; }
+  #tab-mail .m-pair-fl { order: 2; display: flex !important; gap: 8px; margin-bottom: 8px; grid-column: 1 / -1; }
+  #tab-mail .m-pair-fl > label { flex: 1 1 0; min-width: 0; }
+  /* Superior follow-up: the control itself must fill its label — the pair
+     otherwise leaves dead width on the right (reviewed on 01M1DGB5/01M1DGBM). */
+  #tab-mail .m-pair-fl > label > select,
+  #tab-mail .m-pair-fl > label > input { width: 100%; box-sizing: border-box; display: block; }
+  /* Superior 09-01 feedback: Load button = inbox-page-style round refresh
+     icon (same glyph as #btn-load-inbox), small and quiet. */
+  /* Same header-pill look for the manage Load button; grid col1 hugs the
+     36px pill so the search box takes all freed width (superior feedback). */
+  #btn-load-mail {
+    order: 3; grid-column: 1; margin-bottom: 8px;
+    width: 36px; height: 26px; min-height: 0; padding: 0; font-size: 0;
+    border-radius: 999px; background: var(--panel-2); border: 1px solid var(--border);
+    background-repeat: no-repeat; background-position: center; background-size: 16px 16px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%236b7280'%3E%3Cpath d='M17.65 6.35A7.95 7.95 0 0 0 12 4a8 8 0 1 0 7.73 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z'/%3E%3C/svg%3E");
+  }
+  #mail-search { order: 4; grid-column: 2; width: 100%; flex: none !important; max-width: none !important; margin-bottom: 8px; }
+  #mail-search-status { order: 5; grid-column: 1 / -1; }
+  /* boss 1002 (admin browse polish, screenshot 01M3XC4M): the three
+     control rows ride one 34px centerline like the inbox top row (1043)
+     - selects, the limit box, the search field and the round reload pill
+     share one height and one 8px corner; the limit box stops stretching
+     half the row (fixed width, the folder select keeps the space).
+     Style only - ids, options and behaviour untouched. */
+  #mgmt-browse > .row select,
+  #mgmt-browse > .row input[type="number"] {
+    height: 34px; min-height: 34px; padding-top: 0; padding-bottom: 0;
+    border-radius: 8px;
+  }
+  #mail-search { height: 34px; min-height: 34px; padding-top: 0; padding-bottom: 0; }
+  #btn-load-mail { height: 34px; }
+  #tab-mail .m-pair-fl > label:last-of-type { flex: 0 0 auto; }
+  #tab-mail .m-pair-fl input[type="number"] { width: 90px; }
+  #mgmt-browse > .mail-tabs { order: 6; grid-column: 1 / -1; margin-top: 2px; }
+  #mgmt-browse > .mail-grid {
+    order: 7; grid-column: 1 / -1;
+    min-height: 0; overflow: hidden;
+    display: flex; flex-direction: column;
+    align-self: stretch;
+  }
+  #mail-grid > .pane { flex: 1 1 auto; min-height: 0; overflow-y: auto; max-height: none; }
+
+  #mgmt-threads:not(.hidden) {
+    display: flex; flex-direction: column;
+    height: var(--th-1s, calc(100dvh - 320px));
+    min-height: 280px;
+  }
+  #mgmt-threads > .th-viewseg { flex: 0 0 auto; }
+  #mgmt-threads > #th-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+  /* 0015 (boss rc10 retest): the forest canvas bottom sat ON the bar -
+     standing 14px clearance, same contract the browse subpage gets in
+     fitMgmtOneScreen. */
+  #mgmt-threads > #tf-scroll { flex: 1 1 auto; min-height: 0; max-height: none; overflow: auto; margin-bottom: 14px; }
+
+  #mgmt-overview:not(.hidden) {
+    display: flex; flex-direction: column;
+    height: var(--ovw-m-1s, calc(100dvh - 320px));
+    min-height: 280px;
+  }
+  #mgmt-overview > * { flex: 0 0 auto; }
+  #mgmt-overview > .mgmt-ovw { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: block; }
+  #mgmt-overview > .mgmt-graph-wrap { flex: 0 0 auto; height: 40%; min-height: 170px; }
+  #mgmt-overview > .mgmt-graph-wrap > .mgmt-graph { height: 100%; }
+}
+
+@media (max-width: 800px) {
+  #tab-inbox:not(.hidden) {
+    display: flex; flex-direction: column;
+    height: var(--inbox-1s, calc(100dvh - 330px));
+    min-height: 300px;
+  }
+  #tab-inbox > h2, #tab-inbox > .row { flex: 0 0 auto; }
+  #inbox-grid {
+    flex: 1 1 auto; min-height: 0;
+    display: flex; flex-direction: column;
+    position: relative; /* 1042: anchor for the floating pager */
+  }
+  #inbox-grid > .pane {
+    flex: 1 1 auto; min-height: 0; max-height: none;
+    overflow-y: auto;
+  }
+  /* 1042 (boss, 1001): the mobile inbox pager swaps its bulky control
+     row for the floating capsule the PC side uses - chevron buttons +
+     slim page input in one 999px pill, right-aligned, freeing vertical
+     space for the list (flex gives the pane the difference). */
+  /* 1042 round 2 (boss, 1001): the capsule floats INSIDE the list
+     viewport (absolute, bottom-right) - zero flex height, the list
+     owns the full column. */
+  #tab-inbox .inbox-pager {
+    position: absolute; right: 12px; bottom: 10px; z-index: 5;
+    margin: 0; width: max-content;
+    display: flex; align-items: center; gap: 0; justify-content: flex-end;
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 999px; padding: 2px 6px;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.18);
+  }
+  #tab-inbox .inbox-pager button {
+    width: 30px; height: 24px; min-height: 0; padding: 0;
+    border: none; border-radius: 999px; font-size: 0; color: transparent;
+    background-color: transparent;
+    background-repeat: no-repeat; background-position: center; background-size: 14px 14px;
+  }
+  #tab-inbox .inbox-pager button:hover { background-color: rgba(100, 116, 139, 0.14); }
+  #tab-inbox .inbox-pager button[data-i18n="pager.prev"] {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%236b7280'%3E%3Cpath d='M15.4 7.4 14 6l-6 6 6 6 1.4-1.4L10.8 12z'/%3E%3C/svg%3E");
+  }
+  #tab-inbox .inbox-pager button[data-i18n="pager.next"] {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%236b7280'%3E%3Cpath d='M8.6 16.6 10 18l6-6-6-6-1.4 1.4 4.6 4.6z'/%3E%3C/svg%3E");
+  }
+  #tab-inbox .inbox-pager .muted { display: none; }
+  #tab-inbox .inbox-pager input[type="number"] {
+    width: 40px; text-align: center; margin: 0 2px; padding: 3px 0; font-size: 12px;
+    background: transparent; border: none; color: var(--text);
+    -moz-appearance: textfield; appearance: textfield;
+  }
+  #tab-inbox .inbox-pager input[type="number"]:focus { outline: none; box-shadow: none; }
+  #tab-inbox .inbox-pager input[type="number"]::-webkit-outer-spin-button,
+  #tab-inbox .inbox-pager input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  /* 1043 (boss, 1001): the top control row evens out and slims down -
+     reload/mark-all/search all ride a 34px centerline (search was 39
+     vs 26), and the row drops its 16px bottom margin for 8px. */
+  #tab-inbox > .row { margin-bottom: 8px; }
+  #tab-inbox > .row .app-input { height: 34px; min-height: 34px; padding-top: 0; padding-bottom: 0; }
+  #tab-inbox > .row button { height: 34px; min-height: 34px; }
+}
+
+/* Superior 09-02: one-screen Inbox on PC as well — same measured flex
+   column as phones (height = viewport minus header/nav/title/rows, set by
+   fitInboxOneScreen via --inbox-pc-1s). Columns keep the 1fr/1fr ratio;
+   panes scroll internally; the pager stays inside the viewport. */
+@media (min-width: 801px) {
+  #tab-inbox:not(.hidden) {
+    display: flex; flex-direction: column;
+    height: var(--inbox-pc-1s, auto);
+    min-height: 0;
+  }
+  #tab-inbox > h2, #tab-inbox > .row { flex: 0 0 auto; }
+  #inbox-grid { flex: 1 1 auto; min-height: 0; }
+  #inbox-grid > .pane { height: 100%; min-height: 0; max-height: none; }
+  #tab-inbox .inbox-pager { flex: 0 0 auto; margin-bottom: 0; }
+}
+
+/* 收发件/查信 PC 宽屏双栏撑满（上级 09-04 点对点）：两页原本被 main 的
+   1100px 上限卡住，宽屏下左右都占不满。页签容器（头部标题/pill 行/控制行
+   连同 grid）整体负 margin 出血突破容器，两侧保留与旧版一致的 20px 边距
+   ——头部与栏左缘天然对齐；左栏（列表）保持原内容宽度上限 ≈534px
+   （原 1100 容器的一半），右栏（正文）吃掉其余全部宽度。overflow-x:
+   clip 兜住 100vw 与视口 clientWidth 的滚动条差值，避免出横向滚动条。 */
+@media (min-width: 801px) {
+  body { overflow-x: clip; }
+  #tab-inbox:not(.hidden),
+  #tab-mail:not(.hidden) {
+    margin-left: calc(50% - 50vw + 20px);
+    margin-right: calc(50% - 50vw + 20px);
+  }
+  #inbox-grid,
+  #mgmt-browse > .mail-grid {
+    /* 左栏 clamp：宽屏取 534px 上限；容器不足时退为「一半减半 gap」，
+       与右栏 1fr 等分——任何宽度下左栏都不会宽于右栏（上级 09-04）；
+     上限 440px：紧凑一档，正文栏多让一截（上级 09-04 调整）*/
+    grid-template-columns: clamp(0px, calc(50% - 8px), 440px) minmax(0, 1fr);
+  }
+  /* 加载行诸控件统一高度（上级 09-04）：以查信页加载按钮 33px 为基准，
+   「加载/全部已读」按钮与两页的账户/收发/限额/搜索输入全部对齐；
+   移动端图标钮（36×26）不动 */
+  #btn-load-inbox, #btn-mark-all { height: 33px; padding-top: 6px; padding-bottom: 6px; }
+  #inbox-row-ctl .app-input,
+  #mgmt-browse .app-input,
+  #mgmt-browse .row select,
+  #mgmt-browse .row input[type="number"] {
+    height: 33px; padding-top: 0; padding-bottom: 0; box-sizing: border-box;
+  }
+  #mgmt-browse .row select { padding-top: 5px; padding-bottom: 5px; }
+  /* 查信页同款一屏（上级 09-04）：与收发件页同构——容器量高
+     （--mail-pc-1s 由 manage.js fitMailPcOneScreen 写入），标题/切换 pill/
+     账户控制行固定，grid 撑满剩余高，双栏内部滚动。只挂 browse 视图，
+     话题/概览两视图布局不动。 */
+  #tab-mail:not(.hidden) {
+    display: flex; flex-direction: column;
+    height: var(--mail-pc-1s, auto);
+    min-height: 0;
+  }
+  #tab-mail > h2, #tab-mail > .mgmt-seg { flex: 0 0 auto; }
+  /* 与收发件页 pill 行的下间距对齐（16px），两页「加载」行同位
+     （上级 09-04 行对齐反馈；收发件页等效间距 16px，查信原 12px） */
+  #tab-mail > .mgmt-seg { margin-bottom: 16px; }
+  /* 话题 PC 分栏（上级 09-04）：点开话题不切屏——左列表右详情并排；
+     返回钮只在移动端切屏形态下需要，PC 详情内隐藏 */
+  #mgmt-threads.th-split {
+    /* 分栏态放开话题视图的 640px 旧上限，右侧详情才有阅读宽度 */
+    max-width: none;
+    display: grid; grid-template-columns: minmax(0, 440px) minmax(320px, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 0 16px; align-items: start;
+  }
+  /* 视图切换胶囊独占首行，列表钉 2 行 1 列、详情 2 行 2 列
+     （否则胶囊占去第 1 列把列表挤到详情右边） */
+  #mgmt-threads.th-split #th-viewseg { grid-column: 1 / -1; grid-row: 1; }
+  #mgmt-threads.th-split #th-list { grid-column: 1; grid-row: 2; }
+  #mgmt-threads.th-split #th-detail { grid-column: 2; grid-row: 2; }
+  /* 列表/详情容器用收发件 .pane 同款卡片观感（白底+描边+圆角），
+   滑动容器边缘可见（上级 09-04） */
+  #mgmt-threads.th-split #th-list {
+    min-height: 0; overflow-y: auto; max-height: calc(100dvh - 260px);
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px; box-sizing: border-box;
+  }
+  #th-detail {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px; box-sizing: border-box;
+  }
+  /* 详情卡片撑满本行（=左列表高度），内容不足也同底对齐；
+   内容过长时自身封顶内部滚动 */
+  #th-detail {
+    min-height: 0; align-self: stretch;
+    max-height: calc(100dvh - 260px); overflow-y: auto;
+  }
+  #th-detail .th-back { display: none; }
+  /* 话题列表翻页组：与收发件悬浮胶囊同款（sticky 右下），
+     移动端走 .inbox-pager 基础整行样式 */
+  #th-list { position: relative; }
+  #mgmt-threads.th-split .th-pager {
+    /* th-pager 不带 .row，需自带 flex 才能让箭头与页码垂直居中对齐 */
+    display: flex; align-items: center; gap: 0;
+    position: sticky; bottom: 10px; margin: 10px 0 0 auto; width: max-content;
+    /* 与收发件悬浮胶囊同款容器：面板底+描边+投影（此前只挂在
+       #inbox-grid 作用域下，话题胶囊边缘不显） */
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 999px; padding: 2px 6px;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.14);
+  }
+  .th-pager button {
+    width: 30px; height: 24px; min-height: 0; padding: 0;
+    border: none; border-radius: 999px; font-size: 0;
+    background: transparent; color: var(--muted);
+    background-repeat: no-repeat; background-position: center; background-size: 14px 14px;
+  }
+  .th-pager button:hover { background-color: rgba(100, 116, 139, 0.14); }
+  .th-pager button:disabled { opacity: 0.4; cursor: default; }
+  .th-pager button:disabled:hover { background-color: transparent; }
+  .th-pager button[data-i18n="pager.prev"] {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%236b7280'%3E%3Cpath d='M15.4 7.4 14 6l-6 6 6 6 1.4-1.4L10.8 12z'/%3E%3C/svg%3E");
+  }
+  .th-pager button[data-i18n="pager.next"] {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%236b7280'%3E%3Cpath d='M8.6 16.6 10 18l6-6-6-6-1.4 1.4 4.6 4.6z'/%3E%3C/svg%3E");
+  }
+  .th-pager .th-page-input {
+    width: 40px; text-align: center; margin: 0 2px; padding: 3px 0; font-size: 12px;
+    background: transparent; border: none; color: var(--text);
+    -moz-appearance: textfield; appearance: textfield;
+  }
+  .th-pager .th-page-input:focus { outline: none; box-shadow: none; }
+  .th-pager .th-page-input::-webkit-outer-spin-button,
+  .th-pager .th-page-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .th-pager .th-page-info { display: none; }
+  /* 账户/收发/最多加载 三控件组两侧轻细分隔线（上级 09-04）：
+     组首 label 左线、组尾 label 右线，1px 边框色不抢视觉 */
+  #mgmt-browse > .row > label:first-of-type {
+    border-left: 1px solid var(--border); padding-left: 10px;
+  }
+  #mgmt-browse .m-pair-fl > label:last-of-type {
+    border-right: 1px solid var(--border); padding-right: 10px;
+  }
+  /* 收发件搜索框左侧同款轻细线（上级 09-04）：直接描在输入框上会与
+     其自带边框重合看不出分隔——包一层带左线的壳（.search-sep），
+     线与搜索框之间留 8px 呼吸位，观感与查信页组尾右线一致 */
+  #inbox-row-ctl .search-sep {
+    display: flex; flex: 1 1 auto; min-width: 0;
+    border-left: 1px solid var(--border); padding-left: 10px;
+  }
+  #inbox-row-ctl .search-sep .app-input { flex: 0 1 auto; }
+  /* flex column 子项默认 stretch——把内容自适应宽的切换 pill 拉满了整行，
+     收回 flex-start 只包住三颗按钮（上级 09-04 bug 报告） */
+  #tab-mail > .mgmt-seg { align-self: flex-start; }
+  #mgmt-browse:not(.hidden) {
+    flex: 1 1 auto; min-height: 0;
+    display: flex; flex-direction: column;
+  }
+  #mgmt-browse > .row, #mgmt-browse > .mail-tabs { flex: 0 0 auto; }
+  #mail-grid { flex: 1 1 auto; min-height: 0; }
+  #mail-grid > .pane { height: 100%; min-height: 0; max-height: none; }
+  /* 分页控件悬浮化（上级 09-04）：胶囊悬浮于列表右下角，横向
+     「◀ 页码 ▶」左右切页按钮；列表与正文恢复同底对齐（同一网格行）。
+     移动端分页条照旧在 pane 下方。 */
+  #inbox-grid { grid-template-rows: minmax(0, 1fr); row-gap: 0; }
+  #inbox-grid > #inbox-list { grid-column: 1; grid-row: 1; min-height: 0; }
+  #inbox-grid > #inbox-detail { grid-column: 2; grid-row: 1; min-height: 0; }
+  #inbox-grid > .inbox-pager {
+    grid-column: 1; grid-row: 1;
+    align-self: end; justify-self: end;
+    margin: 0 10px 10px 0; z-index: 6;
+    /* 复用本页 seg-pill/mgmt-seg 胶囊分段语法：一体轨道 ◀|页码|▶ */
+    display: inline-flex; align-items: center; gap: 0;
+    background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: 999px; padding: 2px;
+  }
+  #inbox-grid > .inbox-pager .muted { display: none; }
+  #inbox-grid > .inbox-pager button {
+    width: 30px; height: 24px; min-height: 0; padding: 0;
+    border: none; border-radius: 999px; font-size: 0;
+    background: transparent; color: var(--muted);
+    background-repeat: no-repeat; background-position: center; background-size: 14px 14px;
+  }
+  #inbox-grid > .inbox-pager button:hover { background-color: rgba(100, 116, 139, 0.14); }
+  #inbox-grid > .inbox-pager button:disabled { opacity: 0.4; cursor: default; }
+  #inbox-grid > .inbox-pager button:disabled:hover { background-color: transparent; }
+  #inbox-grid > .inbox-pager button[data-i18n="pager.prev"] {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%236b7280'%3E%3Cpath d='M15.4 7.4 14 6l-6 6 6 6 1.4-1.4L10.8 12z'/%3E%3C/svg%3E");
+  }
+  #inbox-grid > .inbox-pager button[data-i18n="pager.next"] {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%236b7280'%3E%3Cpath d='M8.6 16.6 10 18l6-6-6-6-1.4 1.4 4.6 4.6z'/%3E%3C/svg%3E");
+  }
+  #inbox-grid > .inbox-pager #inbox-page-input {
+    width: 36px; text-align: center; margin: 0 2px;
+    padding: 3px 0; font-size: 12px;
+    background: transparent; border: none; color: var(--text);
+    -moz-appearance: textfield; appearance: textfield;
+  }
+  #inbox-grid > .inbox-pager #inbox-page-input:focus {
+    outline: none; box-shadow: none; border-color: transparent;
+  }
+  /* 原生上下步进箭头与左右圆钮语义重复，胶囊内隐藏（上级 09-04） */
+  #inbox-grid > .inbox-pager #inbox-page-input::-webkit-outer-spin-button,
+  #inbox-grid > .inbox-pager #inbox-page-input::-webkit-inner-spin-button {
+    -webkit-appearance: none; margin: 0;
+  }
+}
+
+/* Superior 08-31 (inbox one-screen follow-up): compact controls on phones —
+   page title out; Load/Mark-all become icon-only buttons (Material refresh /
+   done_all double-check) sharing one row with the search box; the mode pill
+   row sits above. Desktop keeps the classic text buttons. */
+@media (max-width: 800px) {
+  #tab-inbox > h2 { display: none; }
+  /* Superior 09-01 feedback: icon buttons adopt the header prefs-pill look
+     (26px capsule, panel-2 track, muted icon) instead of solid primary. */
+  #btn-load-inbox, #btn-mark-all {
+    flex: 0 0 auto; width: 36px; height: 26px; min-height: 0; padding: 0; font-size: 0;
+    border-radius: 999px; background: var(--panel-2); border: 1px solid var(--border);
+    background-repeat: no-repeat; background-position: center; background-size: 16px 16px;
+  }
+  #btn-load-inbox {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%236b7280'%3E%3Cpath d='M17.65 6.35A7.95 7.95 0 0 0 12 4a8 8 0 1 0 7.73 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z'/%3E%3C/svg%3E");
+  }
+  #btn-mark-all {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%236b7280'%3E%3Cpath d='M18 7l-1.41-1.41-6.34 6.34 1.41 1.41L18 7zm4.24-1.41L11.66 16.17 7.48 12l-1.41 1.41L11.66 19l12-12-1.42-1.41zM.41 13.41 6 19l1.41-1.41L1.83 12 .41 13.41z'/%3E%3C/svg%3E");
+  }
+  /* !important：压过元素行内 style 的 max-width:420px，移动端搜索框向右
+     占尽一行（与查信页 #mail-search 同款处理）（上级 09-04） */
+  #inbox-row-ctl .search-sep { display: flex; flex: 1 1 auto; min-width: 0; }
+#inbox-row-ctl .search-sep .app-input { width: 100%; }
+#inbox-row-ctl #inbox-search { flex: 1 1 auto; min-width: 0; max-width: none !important; width: 100%; }
+}
+
+/* Base rule (defect report, desktop leak): wireOvwSplit() inserts the
+   splitter unconditionally, but it is phone-only — hide it by default so
+   desktops never see an unstyled dead button; the ≤800px block below
+   (display:none !important per the later removal ruling) keeps it off
+   there too. Accessible trees no longer expose a useless control. */
+.ovw-split { display: none; }
+/* Overview mobile (superior 09-02): three-line compact rows (account /
+   signature marquee / counts+avg merged) + drag handle for the graph split.
+   Appended last so it wins the cascade over the generic ovw card rules. */
+@media (max-width: 800px) {
+  .ovw-split {
+    display: block; width: 100%; height: 14px; margin: 4px 0;
+    border: none; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+    background: var(--panel-2); cursor: row-resize; padding: 0; touch-action: none;
+  }
+  .mgmt-ovw tr {
+    display: flex; flex-wrap: wrap; align-items: center;
+    border-bottom: 1px solid var(--border); padding: 4px 0;
+  }
+  .mgmt-ovw td { border: none; padding: 1px 4px; overflow: hidden; }
+  .mgmt-ovw td:nth-child(4) { display: none; } /* 高频联系人 hides on phones */
+  .mgmt-ovw td:first-child { flex: 1 1 100%; order: 1; }
+  .mgmt-ovw td[data-label]::before { display: inline; margin: 0 4px 0 0; }
+  .mgmt-ovw td:nth-child(2) { order: 2; flex: 1 1 50%; }
+  .mgmt-ovw td:nth-child(3) { order: 3; flex: 1 1 50%; }
+  .ovw-sig { font-size: 11px; color: var(--muted); margin-top: 1px; }
+}
+/* 拼行强化：两个指标格强制同排（basis 0 防内容撑行） */
+@media (max-width: 800px) {
+  .mgmt-ovw td:nth-child(2), .mgmt-ovw td:nth-child(3) { flex: 1 1 0; min-width: 0; font-size: 11px; }
+}
+/* 权重对齐：tbody tr(0,1,2) 压过前块，flex 三行结构生效 */
+@media (max-width: 800px) {
+  .mgmt-ovw tbody tr { display: flex; flex-wrap: wrap; align-items: center; }
+  .mgmt-ovw tbody td:nth-child(4) { display: none; }
+  .mgmt-ovw tbody td:first-child { flex: 1 1 100%; order: 1; }
+  .mgmt-ovw tbody td:nth-child(2) { order: 2; flex: 1 1 0; min-width: 0; font-size: 11px; }
+  .mgmt-ovw tbody td:nth-child(3) { order: 3; flex: 1 1 0; min-width: 0; font-size: 11px; }
+}
+/* 表格布局解除：table/tbody block 化，tr flex 才能真正约束列宽（长签名
+   才会溢出并触发跑马灯） */
+@media (max-width: 800px) {
+  .mgmt-ovw, .mgmt-ovw tbody { display: block; width: 100%; }
+}
+
+/* Compose mobile one-screen (superior 09-02): form fills the viewport below
+   the header rows, the thread folds into a fullscreen modal via
+   #btn-thread-pane. PC keeps the inline thread below the form.
+   Superior 0.2.2 feedback point 2/3: the fallback height must be a
+   viewport-derived value (like #tab-inbox), never auto — an unmeasured
+   or early-measured tab left the document 2px scrollable; and the page
+   title row hides on phones like every other one-screen page. */
+@media (max-width: 800px) {
+  #tab-compose:not(.hidden) {
+    display: flex; flex-direction: column;
+    height: var(--compose-1s, calc(100dvh - 330px));
+    min-height: 300px;
+  }
+  #tab-compose > h2 { flex: 0 0 auto; display: none; }
+  #tab-compose > .compose-form { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+  #compose-body { min-height: 140px; }
+  #compose-body-label .lbl-row {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 8px; flex: 0 0 auto;
+  }
+  #compose-body-label .lbl-row #btn-thread-pane {
+    /* 0.2.4 微调（boss）：去按钮轮廓，超链接观感——蓝色加粗+回信符号 */
+    margin: 0; width: auto; flex: 0 0 auto;
+    min-height: 0; padding: 0;
+    background: none; border: none; border-radius: 0;
+    color: var(--accent, #2563eb); font-weight: 700; font-size: 13px;
+  }
+  #compose-body-label .lbl-row #btn-thread-pane::before {
+    content: "\21A9\00a0"; /* ↩ 回信符号 + 不换行空格 */
+    font-weight: 700;
+  }
+  #thread-title, #thread-holder { display: none; }
+  #thread-modal .modal-card { padding: 12px; }
+}
+/* 原位往来列表在移动端隐藏（只在弹窗内显示）；弹窗内恢复显示 */
+@media (max-width: 800px) {
+  #tab-compose > #compose-thread { display: none; }
+  #thread-modal:not(.hidden) #compose-thread { display: block; }
+}
+
+/* Thread drawer v2 (superior 09-02 feedback): side drawer instead of a
+   centered modal — the composer stays visible/psychologically "live" —
+   plus a circular icon refresh inside the drawer.
+   Superior 0.2.4: the slide-in broke because .hidden toggles display and
+   transitions never animate across a display change — replaced with a
+   keyframe animation on the open state, which replays on every unhide
+   (right → left again). */
+@media (max-width: 800px) {
+  #thread-modal { justify-content: flex-end; align-items: stretch; padding: 0; }
+  #thread-modal .modal-card {
+    width: 84%; max-width: 360px; height: 100%; max-height: none;
+    border-radius: 0; margin: 0;
+  }
+  #thread-modal:not(.hidden) .modal-card { animation: tf-drawer-in .24s ease; }
+  #thread-modal-tools .row-action {
+    width: 30px; height: 30px; min-height: 0; padding: 0; border-radius: 50%;
+    font-size: 0; overflow: hidden;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%236b7280'%3E%3Cpath d='M17.65 6.35A7.95 7.95 0 0 0 12 4a8 8 0 1 0 7.73 10h-2.08A6 6 1 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: center; background-size: 14px 14px;
+  }
+}
+@keyframes tf-drawer-in {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+/* 账户页 v3（boss 01M1FWBSM6）：注册钮改小（同写邮件钮尺寸、保留蓝底），
+   收紧外卡内边距——滑动列表本身不再独大 */
+@media (max-width: 800px) {
+  .agentreg-card { padding: 10px 12px; margin-top: 0; } /* 1048i */
+  .agentreg-card button.primary {
+    display: inline-block; width: auto; min-height: 0;
+    font-size: 12px; padding: 4px 14px; margin: 0;
+    border-radius: 999px;
+  }
+}
+
+/* 概览 v3（boss 01M1G1JSC）：推拉控件撤除（无标准控件不做）；滑动容器
+   边缘加强到清晰可见 */
+@media (max-width: 800px) {
+  .ovw-split { display: none !important; }
+  #mgmt-overview > .mgmt-ovw {
+    border: 1px solid var(--muted); border-radius: 10px;
+    background: var(--sub-card-bg); padding: 4px;
+  }
+}
+
+/* 写邮件抽屉 v2（boss 01M1G1GTK）：全高不露角；宽度≈2/3；刷新小圆钮与
+   标题同行；标题改「往来邮件」。0.2.4：transform/transition 遗留撤除
+   （display 切换不吃 transition，滑入由 tf-drawer-in keyframes 统一管） */
+@media (max-width: 800px) {
+  #thread-modal { padding: 0; justify-content: flex-end; align-items: stretch; }
+  #thread-modal .modal-card {
+    width: 67%; max-width: none; height: 100dvh; max-height: none;
+    border-radius: 0;
+  }
+  #thread-modal .modal-head { display: flex; align-items: center; gap: 8px; }
+  #thread-modal .modal-head h2 { flex: 1 1 auto; margin: 0; font-size: 16px; }
+  #thread-modal-tools { margin: 0 !important; display: flex; align-items: center; order: 2; }
+  #thread-modal .modal-x { order: 3; }
+}
+
+/* 概览 v4（boss 四点之一/二）：边缘用账户页已批样式（--border 细线+圆角
+   +白底），内部行压平为细横线分割（去卡片/厚 margin） */
+@media (max-width: 800px) {
+  #mgmt-overview > .mgmt-ovw {
+    border: 1px solid var(--border); border-radius: 10px;
+    background: var(--sub-card-bg); padding: 2px;
+  }
+  .mgmt-ovw tbody tr {
+    border: none; border-bottom: 1px solid var(--border);
+    border-radius: 0; background: transparent; margin: 0; padding: 6px 8px;
+  }
+  .mgmt-ovw tbody tr:last-child { border-bottom: none; }
+}
+
+/* 写邮件抽屉 v3（boss 四点之三/四）：modal-card 内联 width:94%/
+   max-height:88vh 移除后由此处接管——全高不露角、宽 67%；刷新小圆钮
+   紧邻标题（×推到最右） */
+@media (max-width: 800px) {
+  #thread-modal .modal-card { width: 67%; height: 100dvh; max-height: none; border-radius: 0; }
+  #thread-modal .modal-head h2 { flex: 0 0 auto; }
+  #thread-modal .modal-x { margin-left: auto; }
+}
+
+/* 总览-通讯录 移动端（boss 0.2.2 反馈点一）：v5 账户页一屏方案的裸类
+   选择器漏伤此表（table 布局下 nowrap 地址列拒缩→签名列一字一行、按钮
+   裁出屏）。泄漏已收敛回 #accounts-table；此处给通讯录补齐同款一屏
+   语法——量测高列（--ovw-dir-1s，manage.js fitMgmtOneScreen 设置）+
+   行卡片化（地址行/签名跑马灯行/写邮件钮行），桌面端不动。
+   0.2.4（boss 四点一）：滑动容器补成熟轮廓（同概览/账户页：细线+圆角
+   +白底盒），高度对齐因此可见；描述行与刷新钮收紧。 */
+@media (max-width: 800px) {
+  #ovw-directory:not(.hidden) {
+    display: flex; flex-direction: column;
+    height: var(--ovw-dir-1s, calc(100dvh - 320px));
+    min-height: 280px;
+  }
+  #ovw-directory > * { flex: 0 0 auto; }
+  #ovw-directory > p.muted { margin: 0 0 8px; font-size: 12px; }
+  /* 0.2.4 微调二（boss）：刷新小圆钮挪到三态切换胶囊旁——原位钮移动端
+     隐藏（PC 保留原文字钮），胶囊行内的 #btn-refresh-directory-m 接管 */
+  #ovw-directory > #btn-refresh-directory { display: none; }
+  .ovw-seg-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .ovw-seg-row > #ovw-seg { margin-bottom: 0 !important; }
+  #btn-refresh-directory-m {
+    width: 36px; height: 26px; min-height: 0; padding: 0;
+    font-size: 0; border-radius: 999px; flex: 0 0 auto;
+    background-color: var(--panel-2); border: 1px solid var(--border);
+    background-repeat: no-repeat; background-position: center; background-size: 16px 16px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%236b7280'%3E%3Cpath d='M17.65 6.35A7.95 7.95 0 0 0 12 4a8 8 0 1 0 7.73 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z'/%3E%3C/svg%3E");
+  }
+  #ovw-directory > #directory-table {
+    flex: 1 1 auto; min-height: 0; overflow-y: auto;
+    display: block; width: 100%;
+    border: 1px solid var(--border); border-radius: 10px;
+    background: var(--sub-card-bg); padding: 2px 8px;
+  }
+  #directory-table thead { display: none; }
+  #directory-table tbody { display: block; width: 100%; }
+  #directory-table tbody tr {
+    display: flex; flex-wrap: wrap; align-items: center;
+    border-bottom: 1px solid var(--border); padding: 6px 2px;
+  }
+  #directory-table tbody tr:last-child { border-bottom: none; }
+  #directory-table td { display: block; border: none; padding: 2px 0; }
+  #directory-table td.addr-cell {
+    order: 1; flex: 1 1 100%; min-width: 0; font-weight: 600;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  #directory-table td.sig-cell { order: 2; flex: 1 1 100%; }
+  #directory-table td.actions-cell {
+    order: 3; flex: 1 1 100%; margin-top: 4px;
+    display: flex; justify-content: flex-end;
+  }
+  #directory-table td.actions-cell .row-action {
+    min-height: 0; padding: 3px 14px; font-size: 12px;
+    border-radius: 999px;
+  }
+}
+
+/* Audit mobile one-screen (superior 0.2.4 pool item, formerly exempted
+   +2590px): measured column (--audit-1s, manage.js fitAuditOneScreen) +
+   the mature container outline; rows card-ified — Time+Action share the
+   first line, Account the second, Detail wraps in the third. PC keeps
+   the plain table. */
+@media (max-width: 800px) {
+  #tab-audit:not(.hidden) {
+    display: flex; flex-direction: column;
+    height: var(--audit-1s, calc(100dvh - 330px));
+    min-height: 300px;
+  }
+  #tab-audit > h2 { flex: 0 0 auto; display: none; }
+  #tab-audit > #audit-table {
+    flex: 1 1 auto; min-height: 0; overflow-y: auto;
+    display: block; width: 100%;
+    border: 1px solid var(--border); border-radius: 10px;
+    background: var(--sub-card-bg); padding: 2px 8px;
+  }
+  #audit-table thead { display: none; }
+  #audit-table tbody { display: block; width: 100%; }
+  #audit-table tbody tr {
+    display: flex; flex-wrap: wrap; align-items: center;
+    border-bottom: 1px solid var(--border); padding: 6px 2px;
+  }
+  #audit-table tbody tr:last-child { border-bottom: none; }
+  #audit-table td { display: block; border: none; padding: 2px 0; min-width: 0; }
+  #audit-table tbody td:nth-child(1) { order: 1; flex: 0 0 auto; font-size: 11px; color: var(--muted); }
+  #audit-table tbody td:nth-child(2) {
+    order: 2; flex: 1 1 0; min-width: 0; text-align: right;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  #audit-table tbody td:nth-child(2) code { font-size: 11px; }
+  #audit-table tbody td:nth-child(3) { order: 3; flex: 1 1 100%; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #audit-table tbody td:nth-child(4) { order: 4; flex: 1 1 100%; font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+}
+
+/* 账户页移动端文档锁高（boss 0.2.2 反馈点二）：内容虽按一屏钉底，但
+   JS 量测偏早或极端视口下仍有像素级溢出，文档就可微拖。对齐收发件页
+   口径——容器锁高取视口推导值（--acc-1s 未设时回退 calc），溢出裁切在
+   容器内，文档永不可滚；块内布局不动（保持已批观感）。弹窗层均在
+   tab 区块之外，不受裁切影响。 */
+@media (max-width: 800px) {
+  #tab-accounts:not(.hidden) {
+    height: var(--acc-1s, calc(100dvh - 330px));
+    min-height: 300px;
+    overflow: hidden;
+  }
+}
+
+/* 往来邮件入口钮改胶囊态（boss：看胶囊展开态效果）——常态胶囊、展开
+   （抽屉开）时反色激活 */
+@media (max-width: 800px) {
+  #btn-thread-pane {
+    border-radius: 999px; padding: 3px 14px; min-height: 0;
+    font-size: 12px; background: var(--panel); width: auto;
+  }
+  #btn-thread-pane.pane-open {
+    background: var(--accent); color: #fff; border-color: var(--accent);
+  }
+}
+
+/* 入口钮胶囊样式回退（boss 01M1G8M7Z：他说的胶囊=往来信件可展开胶囊，
+   非按钮）——恢复普通行内钮语法；行内刷新钮移动端隐藏（抽屉内小圆钮替代） */
+@media (max-width: 800px) {
+  #btn-thread-pane { border-radius: 6px; padding: 4px 10px; background: var(--panel); }
+  #tab-compose .row #btn-refresh-thread { display: none; }
+  #thread-modal-tools #btn-refresh-thread { display: inline-block; }
+}
+
+@media (max-width: 800px) {
+  #thread-modal .thread-list { max-height: none; overflow-y: visible; }
+}
+
+/* 账户页两表对齐概览页压平语法（boss 01M1GAV79）：行=纯细线分割单列
+   堆叠（6px 8px 紧凑内边距），从属/非从属/概览三处行观感一致 */
+@media (max-width: 800px) {
+  .sub-list .sub-card, #acc-m-contacts .ct-card { padding: 6px 8px; margin: 0; }
+  .sub-foot, .ct-foot { margin-top: 2px; }
+  #acc-m-own .ct-card { padding: 6px 8px; }
+}
+/* Whiteboard management panel (design v1): same card/row grammar as the
+   attachment card; settings unfold as an indented sub-row; view reuses
+   the md-lightbox shell. */
+#btn-board-new { font-size: 12px; padding: 3px 14px; }
+.board-set { border-left: 2px solid var(--border); margin: 2px 0 8px 10px;
+  padding: 6px 0 6px 12px; display: flex; flex-direction: column; gap: 6px; }
+.board-set .b-line { display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  font-size: 12px; color: var(--muted); }
+.board-set .b-line > span:first-child { flex: 0 0 auto; }
+.board-set input[type="text"], .board-set input[type="password"] {
+  height: 26px; font-size: 12px; flex: 1 1 140px; min-width: 0;
+  border: 1px solid var(--border); border-radius: 8px; padding: 0 8px;
+  background: var(--panel-2); color: var(--text); }
+.board-share-code { font-family: ui-monospace, "SF Mono", Consolas, monospace;
+  font-size: 11px; word-break: break-all; color: var(--text); }
+.board-share-badge { color: var(--accent); }
+.board-frame { display: flex; flex-direction: column; }
+.board-head { padding: 0 40px 8px 0; font-size: 14px; border-bottom: 1px solid var(--border); }
+.board-content { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 10px 2px; }
+.board-content pre { white-space: pre-wrap; word-break: break-word; }
+.board-edit { flex: 0 0 auto; height: 7em; width: 100%; box-sizing: border-box;
+  resize: none; font: 13px/1.5 ui-monospace, Consolas, monospace;
+  border: 1px solid var(--border); border-radius: 8px; padding: 8px;
+  background: var(--panel-2); color: var(--text); }
+.board-bar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  padding-top: 8px; border-top: 1px solid var(--border); }
+.board-bar input[type="password"] { height: 26px; font-size: 12px; flex: 0 1 160px;
+  min-width: 0; border: 1px solid var(--border); border-radius: 8px; padding: 0 8px;
+  background: var(--panel-2); color: var(--text); }
+.b-spacer { flex: 1 1 auto; }
+/* Whiteboard tweak pack (superior feedback 09-05): per-line separators,
+   dedicated board modal (no md-lightbox shell), shared-board list. */
+.board-line { border-bottom: 1px solid var(--border); padding: 3px 2px; }
+.board-line:last-child { border-bottom: none; }
+.board-line > p { margin: 0; }
+.board-modal { position: fixed; inset: 0; z-index: 300;
+  background: rgba(0, 0, 0, 0.82);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px; }
+.board-modal-frame { position: relative; width: min(760px, 100%);
+  height: min(80vh, 640px); background: var(--panel);
+  border-radius: 12px; padding: 16px;
+  display: flex; flex-direction: column; overflow: hidden; }
+.board-modal-x { position: absolute; top: 8px; right: 8px; width: 28px; height: 28px;
+  border: 0; border-radius: 50%; background: rgba(128, 128, 128, 0.35);
+  color: var(--text); font-size: 16px; line-height: 1; cursor: pointer; }
+.board-modal-x:hover { background: rgba(128, 128, 128, 0.55); }
+#board-shared-rows { max-height: 260px; overflow-y: auto; padding-right: 2px; }
+.board-frame:has(.board-edit:not(.hidden)) .board-content { padding-bottom: 14px; }
+.board-edit { margin-top: 6px; flex: 0 0 auto !important; height: 7em !important; }
+@media (max-width: 800px) {
+  .board-modal { padding: 10px; }
+  .board-modal-frame { height: min(86vh, 720px); padding: 12px; }
+}
+/* Board config UI (round-2 polish #1): line meta prefixes, config row,
+   muted badge. */
+.board-line-meta { color: var(--muted); font-size: 11px; margin-right: 4px; }
+.board-cfg { display: inline-flex; align-items: center; gap: 4px;
+  font-size: 12px; color: var(--muted); cursor: pointer; }
+.board-muted-badge { color: var(--error); font-size: 11px;
+  border: 1px solid var(--error); border-radius: 8px; padding: 0 6px; }
+/* Recipient/cc sending limits (v0.2.8): card in the accounts table. */
+.limits-cell { padding: 10px 6px; }
+.limits-title { font-weight: 600; font-size: 12px; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+.limits-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 4px 0; border-bottom: 1px dashed var(--border); }
+.limits-row:last-child { border-bottom: none; }
+.limits-addr { flex: 0 0 auto; min-width: 180px; font-family: ui-monospace, Consolas, monospace;
+  font-size: 12px; word-break: break-all; }
+.limits-fld { display: inline-flex; align-items: center; gap: 4px;
+  font-size: 12px; color: var(--muted); }
+.limits-num { width: 70px; height: 24px; font-size: 12px;
+  border: 1px solid var(--border); border-radius: 8px; padding: 0 6px;
+  background: var(--panel-2); color: var(--text); }
+@media (max-width: 800px) {
+  .limits-addr { min-width: 0; flex: 1 1 100%; }
+}
+
+/* ============================================================
+   v0.2.8 compose two-column (boss-approved 2026-09-10, mock v4):
+   PC only. Recipient filled -> split: left = compose form (full
+   height, send row pinned to bottom), right = conversation list
+   (internal scroller). No recipient -> solo: right column hidden,
+   form centered. Mobile (<961px) keeps the thread-pane overlay.
+   ============================================================ */
+@media (min-width: 961px) {
+  #tab-compose.solo #thread-title,
+  #tab-compose.solo #thread-holder,
+  #tab-compose.solo #compose-thread { display: none; }
+  #tab-compose.solo > .compose-form { margin-left: auto; margin-right: auto; }
+
+  #tab-compose.split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto auto 1fr;
+    column-gap: 28px;
+    align-items: start;
+    height: var(--compose-2col, calc(100dvh - 170px));
+    padding-top: 4px; /* 1026v3: NOTHING in this grid may sit flush on
+       the overflow:hidden clip edge - sub-pixel jitter shaves CJK
+       glyph tops (hit the To field after the title was fixed). */
+    overflow: hidden;
+  }
+  #tab-compose.split > h2 { grid-column: 1 / -1; grid-row: 1; }
+  #tab-compose.split > .compose-form {
+    grid-column: 1; grid-row: 2 / span 2;
+    max-width: none; min-height: 0; height: 100%;
+  }
+  #tab-compose.split #compose-body-label {
+    flex: 1 1 auto; min-height: 0;
+    display: flex; flex-direction: column;
+  }
+  #tab-compose.split #compose-body { flex: 1 1 auto; min-height: 160px; width: 100%; }
+  /* 1026: the peer address is one unbreakable word - let it wrap inside
+     the column instead of overflowing into the container clip. */
+  #tab-compose.split > #thread-title { grid-column: 2; grid-row: 2; margin-top: 0;
+    line-height: 22px; min-width: 0; overflow-wrap: anywhere; }
+  #tab-compose.split > #compose-thread {
+    grid-column: 2; grid-row: 3;
+    min-height: 0; max-height: none; height: 100%;
+    overflow-y: auto; overflow-x: hidden;
+  }
+  #tab-compose.split > #thread-holder { display: none; }
+  /* v0.2.8.2 (boss live feedback): main caps at 1100px, which squeezed each
+     column to ~1/4 of a wide window. While split, let main stretch so the
+     two columns genuinely take half the viewport each (capped for sanity). */
+  body:has(#tab-compose.split) main {
+    max-width: min(1680px, calc(100vw - 48px));
+  }
+}
+
+/* v0.2.9: the brand mark doubles as the Overview entry (boss directive) —
+   clickable affordance without shouting. */
+#brand-home { cursor: pointer; }
+#brand-home:hover span { text-decoration: underline; text-underline-offset: 3px; }
+
+/* 0.3 (boss v2, test-server feedback): play/export render twice — canvas
+   circles on PC (original form) and capsule pills in the title row on
+   phones, right-aligned on the same line as the 连接图 label. map/nums/
+   days keep their in-canvas circles at every width. */
+.mgmt-graph-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 18px 0 8px; }
+.mgmt-graph-head .mgmt-graph-title { margin: 0; }
+.mgmt-graph-actions { display: flex; align-items: center; gap: 6px; }
+.gg-head-btn { display: none; }
+@media (max-width: 800px) {
+}
+
+/* 1034 (boss: "抖得不行"): the stabilization pre-pass is violent to watch
+   on real volumes - run it in shadow and fade in already still. */
+.mgmt-graph.is-stabilizing { opacity: 0.18; }
+
+/* 0.3.2 系统更新弹窗：内容标题块＋条目悬挂缩进（落位定稿 0922 呈审图） */
+.updates-body { font-size: 14px; line-height: 1.7; color: #1f2937; }
+.updates-headline { font-weight: 700; font-size: 16px; line-height: 1.5; color: #111827; margin: 0 0 10px; }
+.updates-item { margin: 0 0 6px; padding-left: 8px; text-indent: -8px; }
+.updates-more { font-size: 12px; margin: 8px 0 0; }
+
+/* 0.3.2 概览重构（boss 0924 认定）：账户页从属行活动融合＋非从属标＋偏好页自身卡 */
+.badge-ext {
+  display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 3px;
+  background: #8b5cf6; color: #fff; margin-right: 4px;
+  text-transform: uppercase; letter-spacing: 0.5px; vertical-align: middle;
+}
+#acc-act-sum { margin: 0; }
+#acc-act-sum + #accounts-table { margin-top: 2px; } /* 1048i: boss - tighten summary-to-register gap */
+/* 自身卡迁偏好页：手机卡语法（.ct-card 族原在 ≤800px 块内）宿主域双端化 */
+#pown-card { max-width: 560px; }
+#pown-card .ct-card {
+  border: 1px solid var(--sub-card-border); border-radius: 10px;
+  background: var(--sub-card-bg); padding: 7px 9px; margin: 0 0 12px;
+}
+#pown-card .ct-line { display: flex; align-items: center; gap: 6px; min-width: 0; }
+#pown-card .ct-addr { font-size: 13px; flex: 1 1 0; order: 1; min-width: 0;
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+#pown-card .ct-line > .badge-listed { order: 2; flex: 0 0 auto; }
+#pown-card .ct-sig { font-size: 12px; color: var(--muted); margin-top: 2px;
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+#pown-card .ct-foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+#pown-card button.row-action.pill-btn { font-size: 12px; padding: 3px 14px;
+  border-radius: 999px; min-height: 0; }
+
+/* ---- 0.3.3 avatar upload: own-card avatar + one modal (PC & phones) ---- */
+.ct-card.av-owncard { display: grid; grid-template-columns: 52px 1fr; column-gap: 12px; row-gap: 4px; align-items: center; }
+.ct-card.av-owncard .av-ownside { grid-row: 1 / span 3; }
+.av-ownav { position: relative; display: block; width: 52px; height: 52px; padding: 0; border: none; background: none; cursor: pointer; }
+.av-ownslot { display: block; width: 52px; height: 52px; border-radius: 13px; overflow: hidden; border: 1px solid var(--border); }
+.av-ownslot img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.av-ownslot .cl-av-img { width: 100%; height: 100%; font-size: 20px; }
+.av-cam { position: absolute; right: -5px; bottom: -5px; width: 19px; height: 19px; border-radius: 50%;
+  background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center;
+  border: 2px solid var(--panel); box-sizing: content-box; }
+button.row-action.pill-btn.av-entry { border-color: var(--accent); color: var(--accent); }
+#av-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.58); z-index: 300;
+  display: flex; align-items: center; justify-content: center; }
+.av-card { width: 322px; max-width: calc(100% - 36px); background: var(--panel);
+  border: 1px solid var(--border); border-radius: 14px; padding: 0 0 12px;
+  box-shadow: 0 18px 48px rgba(0,0,0,.5); }
+.av-head { display: flex; align-items: center; justify-content: space-between;
+  padding: 13px 16px 11px; border-bottom: 1px solid var(--border); font-size: 14.5px; font-weight: 700; }
+.av-x { background: none; border: none; color: var(--muted); font-size: 19px; line-height: 1;
+  cursor: pointer; padding: 0 2px; }
+.av-body { display: flex; flex-direction: column; align-items: center; padding: 16px 16px 0; }
+.av-prev { width: 96px; height: 96px; border-radius: 24px; overflow: hidden; border: 1px solid var(--border); }
+.av-prev img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.av-prev .cl-av-img { width: 100%; height: 100%; font-size: 34px; }
+.av-info { margin-top: 10px; font-size: 11.5px; opacity: .85; background: rgba(127,127,127,.12);
+  border-radius: 6px; padding: 3px 9px; }
+.av-btns { display: flex; gap: 8px; margin-top: 16px; width: 100%; }
+.av-btns button { flex: 1 1 0; height: 32px; border-radius: 8px; font-size: 12.5px; cursor: pointer; }
+.av-pick { background: transparent; border: 1px solid var(--accent); color: var(--accent); }
+.av-reset { background: transparent; border: 1px solid rgba(229,72,77,.55); color: #e5484d; }
+.av-btns button:disabled { opacity: .38; cursor: default; }
+.av-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 16px 16px 0; }
+.av-foot button { height: 31px; padding: 0 15px; border-radius: 8px; font-size: 12.5px; cursor: pointer; }
+.av-cancel { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+.av-save { background: var(--accent); border: 1px solid var(--accent); color: #fff; font-weight: 600; }
+.av-save:disabled { opacity: .38; }
+
+/* ---- 0.3.5 compose IM mode (件2, boss-approved v3 preview): within a
+   conversation on phones the page reads like a chat. The thread list
+   renders inline in IM order (JS reverses; oldest top, latest bottom) with
+   own letters shifted right and received letters carrying the accent bar —
+   the items keep their validated capsule/truncation/button DNA. The form
+   folds away and a one-line bar writes the body. PC and recipient-less
+   compose are untouched (the class only exists on phones with a To). ---- */
+#im-bar, #im-sheet, #im-head, #im-subject, #im-back { display: none; }
+#thread-holder { display: none; } /* parking spot for the thread node (was inline) */
+@media (max-width: 800px) {
+  #tab-compose.im .compose-form { flex: 0 0 auto; overflow-y: visible; }
+  #tab-compose.im .compose-form > * { display: none; }
+  #tab-compose.im .compose-form > #compose-attachments:not(:empty) { display: block; }
+  /* ＋ panel Cc entry: the validated cc row MOVES into the sheet (anchors
+     with the writing zone, boss) — chips + autocomplete untouched; emptying
+     the chips re-hides it via syncCcVisibility. Input goes transparent on
+     the panel surface (boss: the opaque block was ugly). */
+  #tab-compose.im #im-sheet #compose-cc-row { display: block; margin: 0; }
+  /* 1061 (boss): the bar cc-line is the display - the pull-out sheet
+   keeps only the input for adding; no duplicate chips inside. */
+  #tab-compose.im #im-sheet #compose-cc-row #cc-tags { display: none !important; }
+  #tab-compose.im #im-sheet #compose-cc-row input { background: transparent; }
+  /* the conversation header: label + peer + refresh (h3 stays retired) */
+  /* 头行/主题行 v6 起休眠；列表即页面主体，输入卡悬浮压其底部。 */
+  /* boss: the 往来邮件/subject text rows retire outright (v4) */
+  #tab-compose.im #im-head { display: none; }
+  #tab-compose.im #im-head #im-peer {
+    flex: 1 1 auto; min-width: 0; font-weight: 400;
+    overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  }
+  #tab-compose.im #im-head #im-refresh { flex: 0 0 auto; min-height: 0; padding: 2px 10px; }
+  /* the inline IM list takes the whole room between header and bar */
+  #tab-compose.im #thread-holder {
+    display: block; flex: 1 1 auto; min-height: 0; overflow-y: auto;
+    padding-right: 2px;
+  }
+  #tab-compose.im #thread-holder #compose-thread { display: block; max-height: none; margin-top: 0; }
+  /* boss 09-30 (after the bug2 plates): breathing room ABOVE the first
+    history capsule - in content space (scrolls with the list, clips at
+    the holder edge) so nothing floats over or covers the letters; the
+    flush seat against the nav is untouched. */
+  #tab-compose.im #thread-holder #compose-thread { padding-top: 12px; }
+  /* v3 items + boss freeze-round feedback: bubbles lean slightly IM-ward —
+     own letters shift right AND carry an accent-tinted fill, received stay
+     on the plain panel with the success bar, so the sender reads at a
+     glance (position + edge color + fill). The expand hint stays visible:
+     it is the affordance for the lazy-loaded full body. Order in JS. */
+  #tab-compose.im .thread-item { margin: 0 0 7px; font-size: 12.5px; border-left-width: 2px; }
+  #tab-compose.im .thread-item.thread-out { margin-left: 14%; }
+  #tab-compose.im .thread-item.thread-in { margin-right: 14%; }
+  /* boss 0.3.4.2: history capsules carry avatars - peer left, own right
+     (row-reverse). Boxes ride the standard data-av path (real avatar if the
+     sender uploaded one, robot via the 404 fallback); harvest/restore keeps
+     them decode-free across poll rebuilds (same mechanism as 06586e1). */
+  #tab-compose.im .thread-item { display: flex; gap: 7px; align-items: flex-start;
+    background: none; border: none; border-left: none; padding: 0; border-radius: 0; }
+  /* the capsule chrome lives on the inner card - the avatar hangs in the
+     gutter OUTSIDE it (boss 09-29: 头像不放在胶囊内) */
+  /* 1040 (boss, 1001): the capsule left stroke drops in IM mode -
+     direction reads from placement and the tinted fill alone; the
+     2px border-left (neutral/accent/success variants) retires. */
+  /* 1045b (boss, 1001): in IM mode a no-subject capsule reads its
+       body line in the SUBJECT type (600/13px/text) - the preview
+       line IS the subject line there. */
+  #tab-compose.im .thread-item .thread-prev-multi { font-weight: 600; font-size: 13px; color: var(--text); }
+  #tab-compose.im .thread-item.thread-in .thread-prev-multi.thread-subj-unread { font-weight: 700; }
+  #tab-compose.im .thread-item .thread-card {
+    flex: 1 1 auto; min-width: 0; padding: 8px 12px; border-radius: 6px;
+    background: var(--panel);
+  }
+  /* 1052 (boss): a little tail turns the capsule into an IM bubble -
+     it points at the sender's avatar and mirrors on the outbound
+     side. background:inherit keeps the accent tint continuity. */
+  /* 1052 v2 (boss): a CURVED bubble tip ("气泡小尖" - not an arrow),
+     seated lower so it aims at the avatar's bottom edge instead of
+     clashing with it; mirrors on the outbound side, tint follows
+     the capsule via background:inherit. */
+  #tab-compose.im .thread-item .thread-card { position: relative; }
+    /* 1052 v4 (boss): the industry-standard rounded-corner tail - the
+     silhouette is dominated by two rounded corners, reading as a
+     curved point at the avatar, never a triangle. */
+  /* 1052 v7 (boss): one arc + one straight - quarter-round tail:
+     the straight edges seat against the capsule, the single arc
+     sweeps up toward the avatar. */
+#tab-compose.im .thread-item .thread-card::after {
+    content: ""; position: absolute;
+    /* 1056 (boss): flat (one-line) bubbles are shorter than the tip
+       seat - clamp so the tip never falls half outside the body. */
+        /* 1057 (boss): the seat hugs the bottom edge - the old 14px
+       clearance read as detached; 6px is enough. */
+    top: min(46px, calc(100% - 19px));
+    width: 13px; height: 13px; background: inherit;
+  }
+  #tab-compose.im .thread-item.thread-in .thread-card::after { left: -8px; border-radius: 0 0 0 100%; }
+  #tab-compose.im .thread-item.thread-out .thread-card::after { right: -8px; border-radius: 0 0 100% 0; }
+  #tab-compose.im .thread-item.thread-out { flex-direction: row-reverse; }
+  #tab-compose.im .thread-item.thread-out .thread-card {
+    background: linear-gradient(color-mix(in srgb, var(--accent) 14%, transparent),
+                color-mix(in srgb, var(--accent) 14%, transparent)), var(--panel);
+  }
+  /* 1055 (boss): the freed gutter goes to a BIGGER avatar, not a
+     wider capsule. */
+  #tab-compose.im .thread-av {
+    flex: 0 0 auto; width: 40px; height: 40px; border-radius: 13px;
+    overflow: hidden; background: var(--bg);
+    font-size: 16px; line-height: 40px; text-align: center; color: var(--muted);
+  }
+  /* boss 0.3.4.2: bigger avatar, closer to the screen edge - main's 20px
+     side padding reads as wasted gutter on the phone; IM view hugs 8px */
+  /* 1055 (boss): the avatars use more of the side space - the IM
+     gutter narrows to 2px so both avatars sit near the edges. */
+  /* 1060 (boss): the narrowed gutter is the CONVERSATION page only -
+   scope it to the visible compose tab; other pages keep main gutters. */
+html:has(#tab-compose.im:not(.hidden)) main { padding-left: 5px; padding-right: 5px; }
+  /* 1049b (boss bug): leaving IM compose keeps .im on the panel, so
+     this rule's 8px leaked onto the accounts page and un-full-bled
+     the list. The accounts reset re-wins the tie (later source). */
+  body:has(#tab-accounts:not(.hidden)) main { padding-left: 0; padding-right: 0; }
+  #tab-compose.im .thread-item { gap: 6px; }
+  #tab-compose.im .thread-av img { width: 100%; height: 100%; display: block; object-fit: cover; border-radius: 11px; }
+  /* boss 0.3.4.2 addendum: no-subject capsules have no subject line, so the
+     folded preview is the whole face of the letter - let it breathe to 3
+     lines (clamp, ellipsis on the cut) instead of the one-line nowrap. */
+  #tab-compose.im .thread-item .thread-prev.thread-prev-multi {
+    white-space: normal;
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+    overflow: hidden; text-overflow: ellipsis; word-break: break-word; overflow-wrap: anywhere;
+  }
+  /* 0.3.7.7 (boss 00:15): an expanded bubble needs no thumbnail line -
+     hide the preview while the full body is showing (mobile only; PC
+     keeps it). :has keys off the full-body visibility. */
+  #tab-compose.im .thread-item:has(.thread-full:not(.hidden)) .thread-prev { display: none; }
+  /* the visible subject line (boss: the silent Re:-fill was baffling) —
+     it always shows exactly what the next send will carry: the user's own
+     subject, the predicted "Re: <newest> (auto)", or a tap-to-fill prompt */
+  #tab-compose.im #im-subject { display: none; }
+  #tab-compose.im #im-subject:active { color: var(--text); }
+  #tab-compose.im #im-subject .im-subj-v {
+    min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  }
+  #tab-compose.im #im-subject {
+    background: var(--bg);
+    margin: 0 -10px; padding: 2px 12px 4px;
+  }
+  /* v7 (boss 终裁): the card FLOATS over the tail of the list - absolute,
+     never moves with scroll (no snapping). The list extends behind it, so
+     capsules scrolling past peek out on both flanks (boss: 面板可以不
+     透明，但左右要能看到后面的消息). Same width as before: full width
+     minus the 8px side insets. */
+  /* v6 (boss: 输入部分重新做): ONE composer card - attachment chips, the
+     main row (plus/minus, input, send) and the pull-out rows (Cc, panel
+     entries) all live inside a single solid rounded card. Every input and
+     display is preserved; nothing floats loose any more. */
+  /* boss 09-30 bug 2: below the floating header a 16px band of bare body
+     background showed (main's page margin, measured 82->98, elementFromPoint
+     = BODY). In conversation mode the list IS the page body (v6 ruling), so
+     the margin dies with the mode and returns the moment the mode or the
+     tab goes away (:has tracks both; support envelope is below color-mix,
+     already assumed by the v3 bubble gradient). */
+  body:has(#tab-compose.im:not(.hidden)) main { margin-top: 0; }
+  #tab-compose.im { position: relative; } /* overlay anchor */
+  #tab-compose.im #im-bar {
+    position: absolute; left: 8px; right: 8px; bottom: 8px; z-index: 5;
+    display: flex; flex-direction: column; gap: 6px;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 18px;
+    /* 1038b (boss, staging 0930): .06 read as still too faint - one
+       notch deeper, spread widened with it, still under the retired
+       .10 whisper. */
+    box-shadow: 0 2px 8px rgba(0,0,0,.08);
+    padding: 4px 8px;
+  }
+  #tab-compose.im #im-main { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  /* 收起态行内垂直居中（boss 附图：上下富余） */
+  #tab-compose.im #im-bar #im-main { align-items: center; padding: 2px 0; }
+  #tab-compose.im #im-main #im-plus {
+    width: 30px; height: 30px; min-height: 0; padding: 0; flex: 0 0 auto;
+    border-radius: 50%; border: 1px solid var(--border); background: transparent;
+    color: var(--muted); font-size: 17px; line-height: 1;
+    /* 1041 (boss, 1001): baseline/optical measurement - the + glyph
+       ink sits 1px above the bar centerline; nudge it down. */
+    transform: translateY(1px);
+  }
+  #tab-compose.im #im-main #im-input {
+    /* 1041: the first text line ink sits 1px below the bar
+       centerline (canvas TextMetrics) - asymmetric padding lifts it. */
+    flex: 1 1 auto; min-width: 0; min-height: 0; padding: 3px 0 5px; border: none;
+    background: transparent; color: var(--text); font-size: 13.5px; outline: none;
+    font-family: inherit; line-height: 1.45; resize: none;
+    overflow-y: auto; overflow-x: hidden; max-height: 88px;
+  }
+  /* boss 0.3.4.2: the send glyph must sit dead-center - flex box centers
+     the glyph on both axes (line-height alone rides the font baseline) */
+  #tab-compose.im #im-main #im-send {
+    width: 34px; height: 34px; min-height: 0; padding: 0; flex: 0 0 auto;
+    border-radius: 50%; background: var(--accent); color: #fff; border: none; font-size: 14px;
+    display: inline-flex; align-items: center; justify-content: center; line-height: 1;
+  }
+  #tab-compose.im #im-bar #compose-attachments { margin: 0; }
+  /* 1041 (boss, 1001 round 4): the EMPTY attachment list still flexed,
+       so the bar gap padded 6px above #im-main and pushed the whole
+       button group down inside the bar - boss saw the circles sit low
+       in the screenshot. An empty list display:none's the gap too. */
+  #tab-compose.im #im-bar #compose-attachments:empty { display: none; }
+  /* 附件卡提密（boss：信息密度低）：单行 chip——📎 名（省略）·大小·× 同排 */
+  /* boss test-server report: base .attach-card allows flex-wrap - a long
+     filename pushed the size chip onto a second line before the name ever
+     spent its shrink; nowrap forces ellipsis on the name first, keeping
+     clip+name+size+x on one line. */
+  #tab-compose.im #im-bar .attach-card {
+    display: flex; flex-wrap: nowrap; align-items: center; gap: 7px;
+    padding: 3px 9px; border: 1px solid var(--border); border-radius: 10px;
+    background: rgba(127,127,127,.10); min-width: 0;
+  }
+  #tab-compose.im #im-bar .attach-clip { flex: 0 0 auto; }
+  #tab-compose.im #im-bar .attach-name {
+    flex: 0 1 auto; min-width: 0; overflow: hidden;
+    white-space: nowrap; text-overflow: ellipsis; font-size: 12px;
+  }
+  #tab-compose.im #im-bar .attach-size { flex: 0 0 auto; font-size: 11px; }
+  #tab-compose.im #im-bar .attach-card button { min-height: 0; padding: 0 4px; flex: 0 0 auto; }
+  /* boss: attachments read as ONE rounded box, rows split by dashed
+     rules - not a pile of separate chips */
+  #tab-compose.im #im-bar #compose-attachments:not(:empty) {
+    border: 1px solid var(--border); border-radius: 12px; padding: 2px;
+  }
+  #tab-compose.im #im-bar #compose-attachments:not(:empty) .attach-card {
+    border: none; border-radius: 8px; background: transparent;
+  }
+  #tab-compose.im #im-bar #compose-attachments:not(:empty) .attach-card + .attach-card {
+    border-top: 1px dashed var(--border); border-radius: 0 0 8px 8px;
+  }
+  /* 1045 round 2 (boss, 1001): the trio shrank (no more 30% stretch),
+     spacing opened up, and the fill is the borderless low-contrast
+     tint - the pill reads as a soft chip, not a boxed button. */
+  #tab-compose.im #im-bar #im-sheet:not(.hidden) {
+    gap: 10px; padding: 4px 4px 8px;
+  }
+  #tab-compose.im #im-bar #im-sheet:not(.hidden) button {
+    flex: 0 0 auto; padding: 4px 12px; font-size: 12px;
+    background: rgba(127, 127, 127, 0.10); border: none;
+    border-radius: 999px; color: var(--text);
+  }
+  #tab-compose.im #im-bar #im-sheet:not(.hidden) button:hover { background: rgba(127, 127, 127, 0.18); color: var(--accent); }
+  /* 1060 (boss, adjusted): the pill stays - only the label takes the
+     blue link face (accent + bold). */
+  #tab-compose.im #im-bar #im-sheet:not(.hidden) #im-full {
+    color: var(--accent); font-weight: 700;
+  }
+  /* 1060 (boss): an arrow rides the label, same trick as the back link. */
+  #tab-compose.im #im-bar #im-sheet:not(.hidden) #im-full::before { content: "→\00a0"; font-size: 14px; line-height: 1; }
+  /* 1045 round 3 (boss): the trio spans the row edge to edge, and the
+     pill label centers for real - UA button centering let the line
+     sag 1.5px inside the 44px touch target. */
+  #tab-compose.im #im-bar #im-sheet:not(.hidden) {
+    display: flex; justify-content: space-evenly; column-gap: 0; row-gap: 10px;
+  }
+  #tab-compose.im #thread-holder #im-sheet:not(.hidden) { justify-content: space-evenly; column-gap: 0; row-gap: 10px; }
+  #tab-compose.im #im-bar #im-sheet:not(.hidden) button {
+    display: inline-flex; align-items: center; justify-content: center;
+    /* line-height:1 kills the CJK strut sag (ink sat 1.5px low in the
+       normal-height line box); what is left is the optical midpoint. */
+    line-height: 1;
+  }
+  #tab-compose.im #im-bar #im-sheet:not(.hidden) #compose-cc-row {
+    flex: 1 1 100%; display: flex; align-items: center; flex-wrap: wrap; gap: 5px; margin: 0;
+  }
+  #tab-compose.im #im-bar #im-sheet:not(.hidden) #compose-cc-row .cc-input-wrap { flex: 1 1 auto; min-width: 130px; }
+  /* chips 自成一行流式排布，永不折断字样 */
+  #tab-compose.im #im-bar #im-sheet:not(.hidden) #cc-tags {
+    flex: 1 1 100%; order: 3; display: flex; flex-wrap: wrap; gap: 4px;
+  }
+  #tab-compose.im #im-bar #im-sheet:not(.hidden) #cc-tags .cc-chip { white-space: nowrap; }
+  #tab-compose.im #im-bar #im-sheet:not(.hidden) #compose-cc-row input {
+    background: transparent; border: 1px solid var(--border); border-radius: 10px;
+    padding: 5px 9px; font-size: 12.5px; min-height: 0;
+  }
+  #tab-compose.im #im-bar #compose-attachments:not(:empty) { display: block; }
+  /* ＋ panel: Cc / attachments / full form. Boss v3: the panel must not
+     take a slice of the page (it read as occluding the capsules) — it
+     FLOATS at the bottom of the scroll list (sticky, fully transparent),
+     so capsule content stays visible through and around it. */
+  /* boss: 展开态输入栏沉底——附件 chips 与面板按钮/Cc 在上，输入行压卡底 */
+  #tab-compose.im #im-bar > #compose-attachments:not(:empty) { order: 0; }
+  #tab-compose.im #im-bar > #im-main { order: 2; }
+  #tab-compose.im #im-bar #im-sheet:not(.hidden) {
+    order: 1;
+    display: flex; flex-direction: row; flex-wrap: wrap; gap: 5px;
+    /* 1045 round 4 (boss): equal springs - column gap would bias the
+       middle spaces over the edges, so the row carries all spacing. */
+    column-gap: 0; row-gap: 10px;
+    border-bottom: 1px solid var(--border); padding: 2px 2px 6px; margin: 0;
+  }
+  /* 控件本体不透明、背板保持透明（boss 终裁）：滚过的内容只从控件之间的
+     空隙透出，永远不与控件文字打架。 */
+  #tab-compose.im #thread-holder #im-sheet:not(.hidden) button,
+  #tab-compose.im #thread-holder #im-sheet:not(.hidden) #compose-cc-row input,
+  #tab-compose.im #thread-holder #im-sheet:not(.hidden) #compose-cc-row .cc-chip {
+    background: var(--panel);
+  }
+  #tab-compose.im #compose-thread { padding-bottom: 84px; } /* 最新信滚出浮层卡（卡高62+阴影余量22） */
+  /* 完整写信页 within a conversation: the validated form returns in full */
+  /* boss test-server report: the back button sat flush on the scroll clip
+     edge - CJK glyph ink pokes above the box on device fonts, so the first
+     line read half-clipped under the header; standing top padding keeps the
+     rest state clear of the clip line. */
+  #tab-compose.im.im-full .compose-form { flex: 1 1 auto; overflow-y: auto; padding-top: 6px; }
+  #tab-compose.im.im-full .compose-form > * { display: revert; }
+  /* the irt row carries an inline display:flex - only !important hides it
+     while the conversation owns the page (it returns in the full form) */
+  #tab-compose.im:not(.im-full) #compose-inreplyto-row { display: none !important; }
+  #tab-compose.im.im-full #thread-holder, #tab-compose.im.im-full #im-head { display: none; }
+  /* boss: full form owns the page - the floating card sleeps; a 回来
+     button rides at the top of the form (compose.imBack) */
+  #tab-compose.im.im-full #im-bar { display: none; }
+  #tab-compose.im.im-full #im-back {
+    display: inline-flex; align-items: center; width: auto; align-self: flex-start;
+    min-height: 0; padding: 3px 0; margin: 0 0 10px;
+    background: none; border: none; border-radius: 0;
+    color: var(--accent); font-weight: 700; font-size: 13px;
+  }
+  #tab-compose.im.im-full #im-back::before { content: "\2039\00a0"; font-size: 15px; line-height: 1; }
+}
+
+/* boss PC round (ct-row): the long-address marquee must not swallow the
+   badges/latest line - block-level address row, marquee boxed inside, the
+   line3 on its own row beneath. Late-placed + ID-scoped to win the cascade
+   over the .mq marquee rules above. */
+#accounts-table .ct-row .pc-av-line { display: flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%; overflow: hidden; }
+#accounts-table .ct-row .pc-av-line .sig-track { display: inline-block; flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#accounts-table .ct-row .pc-line3 { position: static; }
+
+
+/* boss PC round 2: an entry and its latest-message line read as ONE
+   block - the hairline between them read as clutter; the block divider
+   now rides the line3 row only (entry rows drop their bottom border). */
+#accounts-table .subrow-pc > td, #accounts-table .ct-row > td { border-bottom: none; }
+#accounts-table tr.line3-row > td { border-bottom: 1px solid var(--border); }
+/* 0.3.4 item 1: the avatar unread dot - server truth via the activity
+   poll, in-place flip only (1046 no-touch discipline). Positioned
+   INSIDE the box: the .im3-av overflow clips anything past the edge. */
+.im3-av-wrap { position: relative; display: inline-flex; flex: none; }
+.im3-av-wrap.has-unread::after { content: ""; position: absolute; top: -2px; right: -2px; width: 8px; height: 8px; border-radius: 50%; background: var(--error); }
+
+/* boss 09-29: the ＋ panel's irt line - display + cancel. Late-placed and
+   ID-scoped to win the cascade; hidden outside conversation mode. */
+#tab-compose.im #im-bar #im-irt-line {
+  display: flex; align-items: center; gap: 7px; flex: 1 1 100%;
+  min-width: 0; padding: 1px 2px; font-size: 11px; color: var(--muted);
+}
+#tab-compose.im #im-bar #im-irt-line #im-irt-val {
+  font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: 11px;
+  color: var(--text); min-width: 0; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;
+}
+#tab-compose.im #im-bar #im-irt-line #im-irt-x { margin-left: auto; flex: 0 0 auto; }
+
+/* boss 09-30 (corrected): the IRT line rides above the input line in the
+   conversation card - visible only while an anchor is set. Opaque surface
+   so scrolling capsules never fight its text. */
+#tab-compose.im #im-bar > #im-irt-line { order: 2; background: var(--panel); }
+/* 1059 (boss): a non-empty CC stays on the input bar like the attachments -
+   the pull-out sheet folds, the line must not (chips mirror #cc-tags). */
+#tab-compose.im #im-bar > #im-cc-line { order: 2; background: var(--panel); }
+#tab-compose.im #im-bar #im-cc-line {
+  display: flex; align-items: center; gap: 7px; flex: 1 1 100%; flex-wrap: wrap;
+  min-width: 0; padding: 1px 2px; font-size: 11px; color: var(--muted);
+}
+#tab-compose.im #im-bar #im-cc-line > span:first-child { flex: 0 0 auto; font-weight: 600; }
+#tab-compose.im #im-bar #im-cc-line .cc-chip { font-size: 11px; }
+
+
+
+/* ---- 0.3.7 whitelist panel ---- */
+.wl-toggle-row{display:flex;align-items:center;gap:8px;font-size:13px;}
+.wl-toggle-row input{width:16px;height:16px;accent-color:var(--accent);}
+.wl-add-row{display:flex;gap:6px;margin-top:4px;}
+.wl-add-row input{flex:1;min-width:0;}
+.wl-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+.wl-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 6px 3px 10px;border:1px solid var(--line,#d7dce3);border-radius:999px;font-size:12px;background:var(--panel,#fff);}
+#wcfg-modal{z-index:210;}
+.wcfg-cli-row{display:flex;align-items:center;gap:10px;margin:8px 0;font-size:13px;}
+.subreg-batch-row{margin:6px 0;font-size:13px;}
+.wl-chip-x{border:none;background:transparent;color:#888;cursor:pointer;font-size:14px;line-height:1;padding:0 4px;}
+.wl-chip-x:hover{color:#dc2626;}
+
+/* 0.3.7 (boss 0930): whitelist rejection receipts must be unmissable on PC
+   and mobile alike - the muted status line becomes a full-width alarmed
+   banner for whitelist outcomes. */
+/* 0930 (boss): the red send-failure notice dismisses itself -
+   armed by compose.js statusAutoClear after 5s (boss 1013). */
+#compose-status {
+  transition: opacity 0.5s ease;
+}
+#compose-status.fade-out {
+  opacity: 0;
+}
+#compose-status.wl-banner {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 8px;
+  padding: 9px 12px;
+  border: 1px solid var(--error);
+  border-radius: 6px;
+  background: rgba(220, 38, 38, 0.08);
+  color: var(--error);
+  font-weight: 700;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* ...mobile IM mode: the form (and its action .row) folds away into the
+   one-line bar - the fold hides the PARENT row, so the banner revives
+   the row itself as an overlay strip above the bar, buttons hidden;
+   im-full keeps the inline placement. */
+#tab-compose.im:not(.im-full) .compose-form > .row:has(#compose-status.wl-banner) {
+  display: block;
+  position: absolute;
+  left: 28px;
+  right: 28px;
+  bottom: 76px;
+  z-index: 6;
+  margin-bottom: 0;
+  /* boss 0930 preview pass: a proper little card - rounded, clearly
+    outlined, the alarm red reading through a solid-enough fill; the
+    row carries the single box, the span strips its own.
+    1013 boss pick (wl_prev_A): white card, not the red tint. */
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(207, 34, 46, 0.8);
+  border-radius: 10px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+}
+#tab-compose.im:not(.im-full) .compose-form > .row:has(#compose-status.wl-banner) #compose-status.wl-banner {
+  background: transparent;
+  border: none;
+}
+
+/* 0930 (boss via Felix): the Sent box marks whitelist-gated letters -
+   a yellow badge on partial rows and the same yellow note on top of
+   the letter when opened. No name details anywhere. */
+/* 0930 (boss): plain direct text like the follow-up link - no pill
+   chrome, current color kept, baseline-aligned with the meta line. */
+.sent-partial-badge {
+  margin-left: 6px; color: #a16207;
+  font-size: 11px; font-weight: 700; white-space: nowrap;
+}
+.sent-partial-note {
+  margin: 0 0 10px; padding: 8px 12px; border-radius: 8px;
+  background: rgba(234, 179, 8, 0.12); border: 1px solid rgba(234, 179, 8, 0.5);
+  color: #a16207; font-size: 12px; font-weight: 700;
+}
+#tab-compose.im:not(.im-full) .compose-form > .row:has(#compose-status.wl-banner) button,
+#tab-compose.im:not(.im-full) .compose-form > .row:has(#compose-status.wl-banner) label {
+  display: none;
+}
+
+/* 0930 (boss): the DESIRED partial-delivery effect is the whole bubble
+   turning yellow - the row/capsule tints, the badge chip stays as the
+   textual anchor. IM capsules need the id-scoped twin to out-rank the
+   per-direction card colors. */
+.mail-item.sent-partial {
+  background: rgba(234, 179, 8, 0.10);
+  box-shadow: inset 3px 0 0 rgba(234, 179, 8, 0.55);
+}
+
+
+/* 0930 (boss, recalibrated): the partial letter tints the card each
+   surface ALREADY renders - no anatomy transplant. PC/mobile-full paint
+   the flat card itself (the visible bubble is the .thread-item), IM
+   paints the capsule child; same 14%-yellow-over-panel recipe as the
+   blue out tint. End of file so it wins the cascade. */
+.thread-item.sent-partial {
+  background: linear-gradient(color-mix(in srgb, #eab308 14%, transparent),
+              color-mix(in srgb, #eab308 14%, transparent)), var(--panel);
+}
+#tab-compose.im .thread-item.sent-partial .thread-card {
+  background: linear-gradient(color-mix(in srgb, #eab308 14%, transparent),
+              color-mix(in srgb, #eab308 14%, transparent)), var(--panel);
+}
+
+/* 0930 (boss picked bt6): the 往来邮件 drawer restores the classic
+   compact list - no capsule chrome, no avatars; direction bar + meta
+   line + badge chip; the partial yellow rides on the restored card. */
+#thread-modal .thread-item {
+  display: block; background: var(--panel); border-left: 3px solid var(--border);
+  padding: 8px 12px; border-radius: 6px; margin-bottom: 6px;
+}
+#thread-modal .thread-item .thread-av { display: none; }
+#thread-modal .thread-item .thread-card { background: none; padding: 0; border-radius: 0; position: static; }
+#thread-modal .thread-item .thread-card::after { display: none; }
+#thread-modal .thread-item.thread-out { border-left-color: var(--accent); }
+#thread-modal .thread-item.thread-in { border-left-color: var(--success); }
+#thread-modal .thread-item.sent-partial {
+  background: linear-gradient(color-mix(in srgb, #eab308 14%, transparent),
+              color-mix(in srgb, #eab308 14%, transparent)), var(--panel);
+  /* boss 0930: ONE edge only - the blue direction bar yields to the
+    yellow one on a partial letter, never both. */
+  border-left-color: rgba(234, 179, 8, 0.55);
+}
+
+/* 0.3.7.4 guide entry: the overview "Guide" state embeds the standalone
+   self-description page (iframe keeps its doc styles isolated). */
+.guide-frame {
+  width: 100%;
+  height: calc(100vh - 280px);
+  min-height: 520px;
+  border: 1px solid #dfe3e8;
+  border-radius: 12px;
+  background: #fff;
+  display: block;
+}
+
+/* ---- mobile onboarding tour (v0.3.7.4) ---- */
+.tour-layer { position: fixed; inset: 0; z-index: 9999; }
+/* Felix 01M4Z90M41XDGKDDK018EH2R6A: the full-bleed layer ate real clicks
+   into the register dialog (elementFromPoint = .tour-layer) - a modal the
+   beat deliberately asked the user to type into. While a passSel modal is
+   open the layer and spot yield (pointer-events none); the card keeps its
+   buttons live. Dialog closes -> the 300ms poll re-arms the mask. */
+/* boss rc20: in pass state the mask KEEPS blocking the page around the
+   dialog - the dialog itself floats above the tour (its own hit area),
+   the spot rides its Register button above that, the card steps aside. */
+.tour-layer.tour-pass .tour-spot { z-index: 10002; transition: none; }
+/* boss 22:08: with the .25s position transition live, the spot (and its
+   200vmax mask shadow, z 10002 over the dialog's 10001) SLIDES across the
+   dialog from its old anchor - reading as a broken spotlight the moment
+   the dialog opens. In pass state it jump-cuts onto the Register button. */
+.tour-layer.tour-pass .tour-card { display: none; pointer-events: none; }
+/* boss 22:54: the mask must float ON TOP of the dialog - the previous
+   float (modal z 10001 over the layer 9999) put the whole tour layer,
+   spot hole and 200vmax dim UNDER the dialog (the spot z 10002 only
+   counts inside the layer stacking context), so the dialog showed no
+   mask at all. The dialog stays at its native z (below the layer); the
+   layer yields pointer-events in pass so the dialog stays clickable;
+   outside clicks land on the dialog backdrop as before. */
+.tour-layer.tour-pass { pointer-events: none; }
+/* boss rc20 (clarified): while the register dialog is up the ONLY clickable
+   thing is its Register button - every other control inside goes inert
+   (random-name path; an account wanting a custom name exits the tour).
+   Tapping the dark mask closes the dialog and the beat re-arms. */
+.tour-lock-inside .modal-card *:not(#btn-subreg-ask-ok) { pointer-events: none; }
+/* the Register button itself must stay clickable even under locked
+   ancestors (:not() does not un-inherit an ancestor's none) */
+.tour-lock-inside #btn-subreg-ask-ok { pointer-events: auto !important; }
+.tour-spot { position: fixed; z-index: 9999; border-radius: 12px; box-shadow: 0 0 0 200vmax rgba(15, 23, 42, 0.55); pointer-events: none; transition: left .25s ease, top .25s ease, width .25s ease, height .25s ease; }
+/* boss 22:33 acceptance: the spotlight mask must read as present - on the
+   dark theme a 55% black shadow on the dark page is imperceptible (boss
+   saw no mask at all), so under the dark theme the dim field goes to 80%
+   near-black navy; explicit pick and system-follow both covered. */
+html[data-theme="dark"] .tour-spot { box-shadow: 0 0 0 200vmax rgba(2, 6, 23, 0.8); }
+@media (prefers-color-scheme: dark) { html:not([data-theme]) .tour-spot { box-shadow: 0 0 0 200vmax rgba(2, 6, 23, 0.8); } }
+
+.tour-card { position: fixed; left: 16px; right: 16px; z-index: 10000; background: #fff; border-radius: 14px; padding: 14px 16px; box-shadow: 0 12px 40px rgba(15, 23, 42, 0.28); }
+.tour-card h3 { margin: 0 0 6px; font-size: 15px; color: #1f2328; }
+.tour-card p { margin: 0 0 12px; font-size: 13.5px; line-height: 1.65; color: #4a5158; }
+.tour-row { display: flex; align-items: center; gap: 8px; }
+#welcome-card .tour-row { justify-content: flex-end; flex-wrap: wrap; gap: 6px; }
+#welcome-card .tour-btn { font-size: 11px; padding: 7px 8px; }
+.tour-count { margin-right: auto; font-size: 12px; color: #98a1ab; }
+.tour-btn { border: 1px solid #dfe3e8; background: #fff; color: #333; border-radius: 8px; padding: 7px 12px; font-size: 13px; cursor: pointer; height: 34px; box-sizing: border-box; white-space: nowrap; flex: none; }
+/* boss 08:12: on the PC welcome card the three buttons flex-shrunk and
+   their labels wrapped mid-word - keep each label on one line and at
+   its natural width (the row has room: 428px inside the 460px card). */
+.tour-btn.primary { background: #2f6fed; border-color: #2f6fed; color: #fff; min-height: 34px; height: 34px; }
+.tour-btn.quiet { border-color: transparent; background: transparent; color: #66707a; }
+body.tour-lock { overflow: hidden; }
+@media (prefers-reduced-motion: reduce) { .tour-spot { transition: none; } }
+/* 0.3.7.5 PC face (boss 22:25): on PC the tour card docks right and keeps
+   following the anchor vertically (aim sets top/bottom inline); the welcome
+   card centers instead of stretching edge to edge. */
+@media (min-width: 801px) {
+  .tour-card { left: auto; right: 24px; max-width: 380px; }
+  #welcome-card { left: 50% !important; right: auto !important; width: 460px; max-width: 460px; margin-left: -230px; }
+}
