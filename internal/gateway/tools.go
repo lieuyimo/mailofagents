@@ -25,33 +25,62 @@ const (
 // the gateway runs wherever the agent runs, so this reads the agent's local
 // files, not the server's) and appends a delimited block per file to body.
 // The mail stays plain text; the server is unaware of attachments.
-func attachFiles(body string, paths []string) (string, error) {
+// localFile is one gateway-host file read for inline inclusion.
+type localFile struct {
+	name string
+	data []byte
+}
+
+// readInlineFiles reads and validates inline_files inputs without touching
+// the access code. Split from rendering so a malformed send can fail before
+// the write budget is charged.
+func readInlineFiles(paths []string) ([]localFile, error) {
 	if len(paths) == 0 {
-		return body, nil
+		return nil, nil
 	}
 	if len(paths) > maxAttachFiles {
-		return "", fmt.Errorf("inline_files: at most %d files allowed, got %d", maxAttachFiles, len(paths))
+		return nil, fmt.Errorf("inline_files: at most %d files allowed, got %d", maxAttachFiles, len(paths))
 	}
-	var b strings.Builder
-	b.WriteString(body)
 	total := 0
+	files := make([]localFile, 0, len(paths))
 	for _, p := range paths {
 		data, err := os.ReadFile(p)
 		if err != nil {
-			return "", fmt.Errorf("inline_files: cannot read %q: %w", p, err)
+			return nil, fmt.Errorf("inline_files: cannot read %q: %w", p, err)
 		}
 		if len(data) > maxAttachFileBytes {
-			return "", fmt.Errorf("inline_files: %q is %d bytes, over the %d-byte per-file limit", p, len(data), maxAttachFileBytes)
+			return nil, fmt.Errorf("inline_files: %q is %d bytes, over the %d-byte per-file limit", p, len(data), maxAttachFileBytes)
 		}
 		total += len(data)
 		if total > maxAttachTotal {
-			return "", fmt.Errorf("inline_files: total %d bytes exceeds the %d-byte limit", total, maxAttachTotal)
+			return nil, fmt.Errorf("inline_files: total %d bytes exceeds the %d-byte limit", total, maxAttachTotal)
 		}
-		b.WriteString("\n\n--- file: " + filepath.Base(p) + " ---\n")
-		b.Write(data)
+		files = append(files, localFile{name: filepath.Base(p), data: data})
+	}
+	return files, nil
+}
+
+// appendInline renders the delimited blocks onto the body.
+func appendInline(body string, files []localFile) string {
+	if len(files) == 0 {
+		return body
+	}
+	var b strings.Builder
+	b.WriteString(body)
+	for _, f := range files {
+		b.WriteString("\n\n--- file: " + f.name + " ---\n")
+		b.Write(f.data)
 		b.WriteString("\n")
 	}
-	return b.String(), nil
+	return b.String()
+}
+
+func attachFiles(body string, paths []string) (string, error) {
+	files, err := readInlineFiles(paths)
+	if err != nil {
+		return "", err
+	}
+	return appendInline(body, files), nil
 }
 
 // toolDef describes one MCP tool for tools/list.
@@ -333,11 +362,6 @@ func (s *Server) toolAuthenticate(ctx context.Context, args map[string]any) (any
 }
 
 func (s *Server) toolSend(ctx context.Context, args map[string]any) (any, error) {
-	entry, err := s.consumeCode(str(args["access_code"]))
-	if err != nil {
-		return nil, err
-	}
-	client := s.getClient(entry.ServerURL)
 	to := toStringSlice(args["to"])
 	if len(to) == 0 {
 		return nil, fmt.Errorf("to is required")
@@ -350,6 +374,42 @@ func (s *Server) toolSend(ctx context.Context, args map[string]any) (any, error)
 	if subject == "" || body == "" {
 		return nil, fmt.Errorf("subject and body are required")
 	}
+	// Read and validate every local input BEFORE consuming the access code:
+	// a malformed send must not burn one of the write calls. Side-effecting
+	// network work starts only after consumeCode succeeds.
+	inlineFiles, err := readInlineFiles(toStringSlice(args["inline_files"]))
+	if err != nil {
+		return nil, err
+	}
+	type attachment struct {
+		path string
+		name string
+		data []byte
+	}
+	filePaths := toStringSlice(args["attachments"])
+	var attachments []attachment
+	if len(filePaths) > 0 {
+		if len(filePaths) > 5 {
+			return nil, fmt.Errorf("attachments: at most 5 files per send, got %d", len(filePaths))
+		}
+		for _, p := range filePaths {
+			data, err := os.ReadFile(p)
+			if err != nil {
+				return nil, fmt.Errorf("attachments: cannot read %q: %w", p, err)
+			}
+			if int64(len(data)) > 1024*1024 {
+				return nil, fmt.Errorf("attachments: %q is over the 1MB per-file limit", p)
+			}
+			attachments = append(attachments, attachment{path: p, name: filepath.Base(p), data: data})
+		}
+	}
+
+	entry, err := s.consumeCode(str(args["access_code"]))
+	if err != nil {
+		return nil, err
+	}
+	client := s.getClient(entry.ServerURL)
+
 	// forward_of (optional): forward a message the sender can already read.
 	// The gateway fetches the original as the sender (server enforces
 	// reachability: own inbox/sent), then appends it below the sender's own
@@ -375,43 +435,20 @@ func (s *Server) toolSend(ctx context.Context, args map[string]any) (any, error)
 	}
 	// inline_files (optional, 1-3): append plain-text file contents from the
 	// machine where this gateway runs as delimited blocks after the body.
-	// Validated (existence, per-file and total size) BEFORE consuming the
-	// send, so a bad attachment never burns the access-code budget or sends
-	// a truncated mail.
-	attachPaths := toStringSlice(args["inline_files"])
-	if len(attachPaths) > 0 {
-		merged, err := attachFiles(body, attachPaths)
-		if err != nil {
-			return nil, err
-		}
-		body = merged
-	}
+	body = appendInline(body, inlineFiles)
+
 	// attachments (optional, 1-5 local paths): true attachments via the
-	// v0.5 file store. Each file is read (bounded), uploaded to the server
-	// as the sender, and the returned IDs ride the send — the server
-	// validates ownership and grants recipients download access. Uploads
-	// happen BEFORE the send, so a mid-way failure sends nothing (any
-	// already-uploaded orphans TTL out after 30 days).
-	filePaths := toStringSlice(args["attachments"])
+	// v0.5 file store. Files were read above; upload them now and let the
+	// returned IDs ride the send. Uploads happen BEFORE the send, so a
+	// mid-way failure sends nothing (any already-uploaded orphans TTL out
+	// after 30 days).
 	var fileIDs []string
-	if len(filePaths) > 0 {
-		if len(filePaths) > 5 {
-			return nil, fmt.Errorf("attachments: at most 5 files per send, got %d", len(filePaths))
+	for _, a := range attachments {
+		up, err := client.UploadFile(entry.Address, entry.Password, a.name, a.data)
+		if err != nil {
+			return nil, fmt.Errorf("attachments: upload %q: %w", a.path, err)
 		}
-		for _, p := range filePaths {
-			data, err := os.ReadFile(p)
-			if err != nil {
-				return nil, fmt.Errorf("attachments: cannot read %q: %w", p, err)
-			}
-			if int64(len(data)) > 1024*1024 {
-				return nil, fmt.Errorf("attachments: %q is over the 1MB per-file limit", p)
-			}
-			up, err := client.UploadFile(entry.Address, entry.Password, filepath.Base(p), data)
-			if err != nil {
-				return nil, fmt.Errorf("attachments: upload %q: %w", p, err)
-			}
-			fileIDs = append(fileIDs, up.ID)
-		}
+		fileIDs = append(fileIDs, up.ID)
 	}
 	// public (optional, default false): additionally publish a showcase copy
 	// for the portal sample — the sender's explicit opt-in.
@@ -933,31 +970,39 @@ func toStringSlice(v any) []string {
 // the authenticated account's own edges. Pure pass-through to the HTTP
 // endpoints (which own the validation, rate limits and 404 masquerade).
 func (s *Server) toolSubs(ctx context.Context, args map[string]any) (any, error) {
-	entry, err := s.consumeCode(str(args["access_code"])) // declare/revoke are writes: budget applies
-	if err != nil {
-		return nil, err
-	}
-	client := s.getClient(entry.ServerURL)
 	action := strings.ToLower(strings.TrimSpace(str(args["action"])))
 	superior := strings.TrimSpace(str(args["superior"]))
+	// Validate before consuming: an invalid action must not burn a write.
 	switch action {
 	case "declare", "revoke":
 		if superior == "" {
 			return nil, fmt.Errorf("superior is required for action=%s", action)
 		}
-		var err2 error
-		if action == "declare" {
-			err2 = client.SubsDeclare(entry.Address, entry.Password, superior)
-		} else {
-			err2 = client.SubsRevoke(entry.Address, entry.Password, superior)
-		}
-		if err2 != nil {
-			return nil, fmt.Errorf("subs %s: %w", action, err2)
-		}
-		return map[string]any{"status": action + "d", "superior": superior}, nil
 	case "list":
-		return client.SubsList(entry.Address, entry.Password)
 	default:
 		return nil, fmt.Errorf("action must be declare, revoke or list (got %q)", action)
 	}
+	// declare/revoke are writes and consume the budget; list is a read.
+	consume := s.consumeCode
+	if action == "list" {
+		consume = s.consumeCodeReadOnly
+	}
+	entry, err := consume(str(args["access_code"]))
+	if err != nil {
+		return nil, err
+	}
+	client := s.getClient(entry.ServerURL)
+	if action == "list" {
+		return client.SubsList(entry.Address, entry.Password)
+	}
+	var err2 error
+	if action == "declare" {
+		err2 = client.SubsDeclare(entry.Address, entry.Password, superior)
+	} else {
+		err2 = client.SubsRevoke(entry.Address, entry.Password, superior)
+	}
+	if err2 != nil {
+		return nil, fmt.Errorf("subs %s: %w", action, err2)
+	}
+	return map[string]any{"status": action + "d", "superior": superior}, nil
 }
