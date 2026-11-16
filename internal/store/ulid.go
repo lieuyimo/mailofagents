@@ -2,8 +2,8 @@ package store
 
 import (
 	"crypto/rand"
-	"encoding/binary"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -13,11 +13,12 @@ import (
 // collision-resistant without coordination — ideal for message IDs stored in
 // a bbolt bucket whose iteration order matters.
 //
-// This is a minimal pure-Go implementation with no external dependency. It is
-// NOT a conformant ULID library (no monotonicity guarantees across calls in
-// the same millisecond), but for a single-writer bbolt store that is fine:
-// the random tail disambiguates within-millisecond IDs, and the writer is
-// serialized by bbolt transactions anyway.
+// This is a minimal pure-Go implementation with no external dependency. Calls
+// are monotonic: two IDs generated in the same millisecond (or after a
+// backwards clock step) get the previous timestamp and an incremented random
+// tail, so byte order still equals generation order. That is a load-bearing
+// property, not a nicety — inbox/sent indexes, showcase eviction, and thread
+// ordering all rely on "ULID key order = chronological order".
 //
 // See https://github.com/ulid/spec for the format.
 
@@ -40,32 +41,89 @@ func IsULID(s string) bool {
 	return true
 }
 
-// newULID returns a fresh ULID string for the current time.
-func newULID() string {
-	return newULIDAt(time.Now())
+// ulidGen is one monotonic ULID generator. The process shares defaultULIDGen;
+// tests construct their own so they never depend on state left by earlier
+// tests.
+type ulidGen struct {
+	mu     sync.Mutex
+	lastMS int64
+	last   [10]byte // 80-bit random tail of the most recent ID
+	seeded bool
 }
 
-// newULIDAt returns a ULID string for the given time. Split out so tests can
-// pin the timestamp.
-func newULIDAt(now time.Time) string {
+// defaultULIDGen is the process-wide generator. It is mutex-guarded so
+// concurrent request handlers still receive IDs in a single generation order.
+var defaultULIDGen ulidGen
+
+// newULID returns a fresh ULID string for the current time.
+func newULID() string {
+	return defaultULIDGen.next(time.Now())
+}
+
+// next returns a ULID string for the given time.
+//
+// Implements the ULID spec's monotonic mode: if the supplied time is not
+// strictly after the previous call's millisecond, the previous timestamp is
+// reused and the 80-bit random tail is incremented by one. Within one process,
+// IDs are therefore strictly increasing in byte/lexical order in generation
+// order, even for same-millisecond bursts and backwards clock steps.
+// (Generation order, not transaction-commit order: a concurrent writer may
+// commit in another order. A restart with a backwards clock starts a fresh
+// generator and provides no such guarantee across the restart.)
+func (g *ulidGen) next(now time.Time) string {
 	var b [16]byte
-	// 48-bit big-endian millisecond timestamp.
-	ms := uint64(now.UnixMilli())
-	binary.BigEndian.PutUint64(b[0:8], ms) // writes 8 bytes; we use first 6
-	// Copy the low 48 bits (6 bytes) into b[0:6], overwriting the high 2.
+	ms := now.UnixMilli()
+
+	g.mu.Lock()
+	if g.seeded && ms <= g.lastMS {
+		// Same millisecond (or clock moved backwards): keep the last
+		// timestamp so the embedded time never decreases, and bump the
+		// random tail so this ID still sorts after the previous one.
+		ms = g.lastMS
+		carried := true
+		for i := len(g.last) - 1; i >= 0; i-- {
+			g.last[i]++
+			if g.last[i] != 0 {
+				carried = false
+				break
+			}
+		}
+		if carried {
+			g.mu.Unlock()
+			// All 2^80 tail values in this millisecond are exhausted.
+			// Silently wrapping would break the strict-ordering promise,
+			// so fail loudly instead.
+			panic("store: ULID monotonic random tail overflowed")
+		}
+	} else {
+		if _, err := rand.Read(g.last[:]); err != nil {
+			g.mu.Unlock()
+			// crypto/rand failure is catastrophic for ID uniqueness.
+			// Panicking is safer than silently emitting a predictable ID.
+			panic("store: crypto/rand failed during ULID generation: " + err.Error())
+		}
+	}
+	g.lastMS = ms
+	g.seeded = true
+	rnd := g.last
+	g.mu.Unlock()
+
+	// 48-bit big-endian millisecond timestamp (the low 6 bytes of ms).
 	b[0] = byte(ms >> 40)
 	b[1] = byte(ms >> 32)
 	b[2] = byte(ms >> 24)
 	b[3] = byte(ms >> 16)
 	b[4] = byte(ms >> 8)
 	b[5] = byte(ms)
-	// 80 bits of randomness.
-	if _, err := rand.Read(b[6:16]); err != nil {
-		// crypto/rand failure is catastrophic for ID uniqueness. Panicking is
-		// safer than silently emitting a predictable ID.
-		panic("store: crypto/rand failed during ULID generation: " + err.Error())
-	}
+	// 80 bits, monotonic within a millisecond.
+	copy(b[6:], rnd[:])
 	return encodeULID(b)
+}
+
+// newULIDAt is a convenience wrapper around the process-wide generator,
+// kept for callers/tests that pin the timestamp.
+func newULIDAt(now time.Time) string {
+	return defaultULIDGen.next(now)
 }
 
 // encodeULID encodes 16 bytes into the 26-character Crockford Base32 form.
