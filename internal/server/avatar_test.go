@@ -50,7 +50,7 @@ func avatarUpload(t *testing.T, ts *httptest.Server, acct, pass string, body []b
 
 func setupAvatarServer(t *testing.T) *httptest.Server {
 	t.Helper()
-	st, err := store.Open(t.TempDir() + "/test.db")
+	st, err := store.Open(t.TempDir()+"/test.db", testStoreOptions()...)
 	if err != nil {
 		t.Fatalf("open store: %v", err)
 	}

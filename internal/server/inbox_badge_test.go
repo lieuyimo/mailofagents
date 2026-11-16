@@ -16,7 +16,7 @@ import (
 // poll (GET /api/inbox?limit=1&badge=1) fires on a per-second cadence and
 // must NOT bloat the audit log; every ordinary inbox read still records.
 func TestInboxBadgeSkipsAudit(t *testing.T) {
-	st, err := store.Open(t.TempDir() + "/test.db")
+	st, err := store.Open(t.TempDir()+"/test.db", testStoreOptions()...)
 	if err != nil {
 		t.Fatalf("open store: %v", err)
 	}

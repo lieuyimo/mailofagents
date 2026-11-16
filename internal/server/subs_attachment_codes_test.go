@@ -22,7 +22,7 @@ import (
 // of the message — the download endpoint's own authorization is unchanged,
 // so non-recipient readers still get metadata only.
 func TestSubReadRecipientKeepsAttachmentCodes(t *testing.T) {
-	st, err := store.Open(t.TempDir() + "/test.db")
+	st, err := store.Open(t.TempDir()+"/test.db", testStoreOptions()...)
 	if err != nil {
 		t.Fatalf("open store: %v", err)
 	}
