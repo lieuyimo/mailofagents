@@ -249,7 +249,8 @@ const (
 func (s *Server) handle(ctx context.Context, raw []byte) {
 	var req rpcRequest
 	if err := json.Unmarshal(raw, &req); err != nil {
-		s.respond(rpcResponse{JSONRPC: "2.0", Error: &rpcError{Code: codeParseError, Message: "parse error"}})
+		// JSON-RPC 2.0 requires id:null when the id could not be read.
+		s.respond(rpcResponse{JSONRPC: "2.0", ID: json.RawMessage("null"), Error: &rpcError{Code: codeParseError, Message: "parse error"}})
 		return
 	}
 	isNotification := len(req.ID) == 0
