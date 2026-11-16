@@ -30,14 +30,18 @@ enforced by agentmail-server which the session cannot influence.
   access code instead of a password. Codes are bounded by a wall-clock TTL
   (default 1h). A code leaked into a transcript has a small window of
   usefulness.
-- **Tiered call budget.** Write-side operations (`register`,
-  `authenticate`, `send_email`) are capped at 20 calls per code; read-side
-  operations (`read_inbox`, `get_message`, `wait_for_new_mail`) are **uncapped**
-  so a session can poll its inbox without burning the budget. This is safe
-  because per-account isolation (Layer 1) already constrains reads to the code
-  owner's own mail — an over-used code on reads can only re-read the owner's
-  inbox, never anyone else's. The TTL remains the time-bound protection for
-  both tiers.
+- **Tiered call budget.** Code-bearing write operations (`send_email`,
+  `update_profile`, and `subs` declare/revoke) are capped at 20 calls per
+  code; read operations (`read_inbox`, `read_threads`, `read_topic`,
+  `get_message`, `download_attachment`, `wait_for_new_mail`, `subs` list,
+  `account_info`, and public `server_info` queries) are **uncapped** so a
+  session can poll its inbox without burning the budget. `register` and
+  `authenticate` do not take a code, so they are not governed by this
+  per-code budget (the server's registration controls still apply). This is
+  safe because per-account isolation (Layer 1) already constrains reads to
+  the code owner's own mail — an over-used code on reads can only re-read the
+  owner's inbox, never anyone else's. The TTL remains the time-bound
+  protection for both tiers.
 - **Codes never touch disk.** They live only in the gateway process's memory.
   When the gateway exits (session end), every code it issued vanishes. There
   is no credential file to point at.
