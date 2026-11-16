@@ -40,7 +40,7 @@ type ShowcaseEntry struct {
 func (s *Store) TeeShowcase(from string, to []string, subject, body string) error {
 	now := s.now()
 	entry := ShowcaseEntry{
-		ID:         newULID(),
+		ID:         newULIDAt(now),
 		From:       from,
 		To:         to,
 		Subject:    subject,
