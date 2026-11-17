@@ -287,7 +287,7 @@ func (s *Server) handleAdminStats(w http.ResponseWriter, r *http.Request) {
 //	POST /admin/reset-password  {"account": "<addr>", "new_password": "<optional>"}
 //	  -> {"account": "...", "password": "<the new plaintext password>"}
 //
-// If new_password is omitted or empty, a random 24-char password is generated.
+// If new_password is omitted or empty, a random 24-char password is created.
 // A supplied new_password must be at least 8 chars. The old password is NOT
 // verified (the admin has already authenticated).
 func (s *Server) handleAdminResetPassword(w http.ResponseWriter, r *http.Request) {
