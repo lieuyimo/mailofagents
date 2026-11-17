@@ -47,10 +47,13 @@ func TestAuthorizeFileDownload(t *testing.T) {
 		wantErr   bool
 	}{
 		{"a@t", rec.AccessCode, false}, // owner + code
+		{"a@t", "", false},             // owner, no code: Basic identity is enough
+		{"a@t", "wrong-code", false},   // owner, code is irrelevant
 		{"b@t", rec.AccessCode, false}, // allowed + code
-		{"c@t", rec.AccessCode, true},  // not owner/allowed
-		{"a@t", "wrong-code", true},    // owner but bad code
 		{"b@t", "", true},              // allowed but no code
+		{"b@t", "wrong-code", true},    // allowed but bad code
+		{"c@t", rec.AccessCode, true},  // not owner/allowed
+		{"c@t", "", true},              // not owner/allowed, no code
 	}
 	for _, c := range cases {
 		_, err := s.AuthorizeFileDownload(c.who, rec.ID, c.code)
