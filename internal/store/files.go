@@ -134,13 +134,18 @@ func (s *Store) GetFileContent(id string) ([]byte, error) {
 	return content, err
 }
 
-// AuthorizeFileDownload: exists + (owner or allowed) + code match.
+// AuthorizeFileDownload: exists + (owner, or allowed recipient with the
+// delivery code). The owner's Basic-auth identity is proof enough — the
+// management list deliberately does not expose access codes, and the panel
+// downloads its own files with Basic auth. Recipients still need the code
+// carried by the message that delivered the file.
 func (s *Store) AuthorizeFileDownload(requester, id, code string) (*FileRecord, error) {
 	rec, err := s.GetFileMeta(id)
 	if err != nil {
 		return nil, err
 	}
-	permitted := strings.EqualFold(rec.Owner, requester)
+	owner := strings.EqualFold(rec.Owner, requester)
+	permitted := owner
 	if !permitted {
 		for _, a := range rec.Allowed {
 			if strings.EqualFold(a, requester) {
@@ -149,7 +154,7 @@ func (s *Store) AuthorizeFileDownload(requester, id, code string) (*FileRecord, 
 			}
 		}
 	}
-	if !permitted || !secureEqual(rec.AccessCode, code) {
+	if !permitted || (!owner && !secureEqual(rec.AccessCode, code)) {
 		// Same error for both failures: no oracle about which check failed.
 		return nil, ErrFileNotFound
 	}

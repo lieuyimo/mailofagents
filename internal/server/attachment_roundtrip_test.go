@@ -87,6 +87,30 @@ func TestAttachmentRoundTrip(t *testing.T) {
 		t.Fatalf("upload response: %s (%v)", upBody, err)
 	}
 
+	// 1b) the owner downloads without the access code (the management list
+	// does not expose codes); a non-owner without a code still 404s.
+	dlReq, _ := http.NewRequest("GET", ts.URL+"/api/files/"+upRes.ID+"/download", nil)
+	auth(dlReq)
+	dl, err := c.Do(dlReq)
+	if err != nil {
+		t.Fatalf("owner download: %v", err)
+	}
+	dlBody, _ := io.ReadAll(dl.Body)
+	dl.Body.Close()
+	if dl.StatusCode != http.StatusOK || string(dlBody) != "attachment round-trip payload" {
+		t.Fatalf("owner download = %d %q", dl.StatusCode, dlBody)
+	}
+	foreignReq, _ := http.NewRequest("GET", ts.URL+"/api/files/"+upRes.ID+"/download", nil)
+	foreignReq.SetBasicAuth("admin@test.example", "adminpassword1")
+	foreign, err := c.Do(foreignReq)
+	if err != nil {
+		t.Fatalf("foreign download: %v", err)
+	}
+	foreign.Body.Close()
+	if foreign.StatusCode != http.StatusNotFound {
+		t.Fatalf("foreign download = %d, want 404", foreign.StatusCode)
+	}
+
 	// 2) send with the attachment.
 	sendReq, _ := http.NewRequest("POST", ts.URL+"/api/send",
 		strings.NewReader(`{"to":["sender@test.example"],"subject":"rt","body":"round trip body","attachments":["`+upRes.ID+`"]}`))
