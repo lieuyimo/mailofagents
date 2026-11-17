@@ -62,7 +62,7 @@ func newFakeMailServer(t *testing.T) (*httptest.Server, *fakeMailServer) {
 		case "/api/register":
 			name, _ := body["name"].(string)
 			w.Header().Set("Content-Type", "application/json")
-			_, _ = fmt.Fprintf(w, `{"address":%q,"password":"generated-pass"}`, name+"@test")
+			_, _ = fmt.Fprintf(w, `{"address":%q}`, name+"@test")
 		case "/api/send":
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(`{"message_id":"msg-1"}`))
@@ -359,8 +359,33 @@ func TestRegisterAndAuthenticateValidation(t *testing.T) {
 	if err := json.Unmarshal([]byte(text), &reg); err != nil {
 		t.Fatalf("decode register result: %v", err)
 	}
-	if reg.Address != "alice@test" || reg.Password != "generated-pass" {
+	if reg.Address != "alice@test" || len(reg.Password) < 8 {
 		t.Fatalf("register result = %+v", reg)
+	}
+	regs := fs.requestsTo("/api/register")
+	if len(regs) != 1 || regs[0].Body["password"] != reg.Password {
+		t.Fatalf("register request did not carry the returned password: %+v", regs)
+	}
+
+	text, isErr = toolText(t, callTool(t, s, "register", map[string]any{
+		"name": "bob", "password": "mypassword1",
+	}))
+	if isErr {
+		t.Fatalf("register with password failed: %s", text)
+	}
+	var reg2 struct {
+		Address  string `json:"address"`
+		Password string `json:"password"`
+	}
+	if err := json.Unmarshal([]byte(text), &reg2); err != nil {
+		t.Fatalf("decode register result: %v", err)
+	}
+	if reg2.Address != "bob@test" || reg2.Password != "mypassword1" {
+		t.Fatalf("explicit-password register = %+v", reg2)
+	}
+	regs = fs.requestsTo("/api/register")
+	if len(regs) != 2 || regs[1].Body["password"] != "mypassword1" {
+		t.Fatalf("explicit password not sent: %+v", regs)
 	}
 
 	text, isErr = toolText(t, callTool(t, s, "authenticate", map[string]any{"address": "a@test"}))

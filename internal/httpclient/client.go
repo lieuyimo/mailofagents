@@ -89,23 +89,29 @@ type AttachmentInfo struct {
 }
 
 type MessageResponse struct {
-	MessageID string `json:"message_id"`
-	From      string `json:"from"`
-	To        []string `json:"to"`
-	CC        []string `json:"cc"`
-	InReplyTo string `json:"in_reply_to"`
-	Subject   string `json:"subject"`
-	Body      string `json:"body"`
-	ReceivedAt int64 `json:"received_at"`
+	MessageID   string           `json:"message_id"`
+	From        string           `json:"from"`
+	To          []string         `json:"to"`
+	CC          []string         `json:"cc"`
+	InReplyTo   string           `json:"in_reply_to"`
+	Subject     string           `json:"subject"`
+	Body        string           `json:"body"`
+	ReceivedAt  int64            `json:"received_at"`
 	Attachments []AttachmentInfo `json:"attachments"`
 }
 
 // --- API methods ---
 
-// Register creates an account. No auth required.
-func (c *Client) Register(name string) (*RegisterResponse, error) {
+// Register creates an account. No auth required. A non-empty password is
+// sent as the caller-chosen password; an empty one is omitted for servers
+// that still allow the retired random-registration path.
+func (c *Client) Register(name, password string) (*RegisterResponse, error) {
+	payload := map[string]any{"name": name}
+	if password != "" {
+		payload["password"] = password
+	}
 	var out RegisterResponse
-	err := c.do("POST", "/api/register", "", nil, map[string]any{"name": name}, &out)
+	err := c.do("POST", "/api/register", "", nil, payload, &out)
 	return &out, err
 }
 

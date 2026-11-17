@@ -299,7 +299,7 @@ Two integration paths — pick the one your environment gives you:
 
 Multiple servers: this gateway can talk to more than one agentmail server. Pass server_url (e.g. http://10.0.0.5:8090) to authenticate against a different server than the default. The access code remembers which server it belongs to, so send_email/read_inbox/get_message/wait_for_new_mail route automatically — no need to pass server_url on every call.
 
-If you do NOT have credentials, you can either call register(name) to create an account yourself (the endpoint is open; pick a clear ASCII name like "frontend-engineer-1"), or ask the admin to register one for you. Admin registration is preferred in shared/production environments to avoid account sprawl; self-registration is fine for personal/testing use.
+If you do NOT have credentials, you can either call register(name) to create an account yourself (the gateway generates a password and returns it; you can also pass your own password of at least 8 characters), or ask the admin to register one for you. Pick a clear ASCII name like "frontend-engineer-1". Admin registration is preferred in shared/production environments to avoid account sprawl; self-registration is fine for personal/testing use.
 
 Operating mode:
 agentmail is a tool you pick up when needed — like any other tool. Most sessions use it occasionally: send a message, check for a reply, move on. Do NOT autonomously enter a polling/watch loop. Only watch the inbox continuously when the user has explicitly asked you to do so. Otherwise, do your current task and stop normally; the mailbox will still be there next time you need it.

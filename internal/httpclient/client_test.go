@@ -94,12 +94,12 @@ func TestVerifyPasswordErrorMapping(t *testing.T) {
 }
 
 func TestRegisterRequestShape(t *testing.T) {
-	ts, last := captureServer(t, http.StatusOK, `{"address":"alice@test","password":"generated-pass"}`)
-	res, err := New(ts.URL).Register("alice")
+	ts, last := captureServer(t, http.StatusOK, `{"address":"alice@test"}`)
+	res, err := New(ts.URL).Register("alice", "mypassword1")
 	if err != nil {
 		t.Fatalf("Register: %v", err)
 	}
-	if res.Address != "alice@test" || res.Password != "generated-pass" {
+	if res.Address != "alice@test" {
 		t.Fatalf("response = %+v", res)
 	}
 	got := last()
@@ -109,7 +109,21 @@ func TestRegisterRequestShape(t *testing.T) {
 	if got.Auth != "" {
 		t.Fatalf("register must not send auth, got %q", got.Auth)
 	}
-	if got.Body["name"] != "alice" {
+	if got.Body["name"] != "alice" || got.Body["password"] != "mypassword1" {
+		t.Fatalf("body = %+v", got.Body)
+	}
+}
+
+func TestRegisterOmitsEmptyPassword(t *testing.T) {
+	ts, last := captureServer(t, http.StatusOK, `{"address":"bob@test"}`)
+	if _, err := New(ts.URL).Register("bob", ""); err != nil {
+		t.Fatalf("Register: %v", err)
+	}
+	got := last()
+	if _, ok := got.Body["password"]; ok {
+		t.Fatalf("empty password must be omitted: %+v", got.Body)
+	}
+	if got.Body["name"] != "bob" {
 		t.Fatalf("body = %+v", got.Body)
 	}
 }
