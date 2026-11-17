@@ -1,6 +1,5 @@
 # Structural debt budget: known files/functions above the limits.
 # Run `go run ./cmd/audit-structure -update` after shrinking or removing an entry.
-file	1009	internal/gateway/tools.go	-
 file	916	internal/server/handlers_admin.go	-
 file	1127	internal/server/handlers_api.go	-
 file	1154	internal/store/message.go	-
@@ -8,7 +7,7 @@ file	1199	internal/worker/adapter.go	-
 file	995	internal/worker/duty.go	-
 func	134	cmd/agentmail-worker/main.go	main
 func	110	cmd/demo-worker/main.go	main
-func	130	internal/gateway/tools.go	(*Server).handleToolsList
+func	131	internal/gateway/tooldefs.go	(*Server).handleToolsList
 func	105	internal/gateway/tools.go	(*Server).toolSend
 func	154	internal/server/handlers_api.go	(*Server).handleProfileSelf
 func	126	internal/server/handlers_api.go	(*Server).handleSend
