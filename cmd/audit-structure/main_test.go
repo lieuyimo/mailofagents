@@ -62,6 +62,30 @@ func TestDepViolations(t *testing.T) {
 	}
 }
 
+func TestTestFilesDoNotCreateDependencyEdges(t *testing.T) {
+	dir := t.TempDir()
+	mk := func(rel, src string) {
+		t.Helper()
+		p := filepath.Join(dir, rel)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(src), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	mk("internal/foo/foo.go", "package foo\n")
+	mk("internal/bar/bar_test.go", "package bar\n\nimport _ \""+internalPfx+"foo\"\n")
+	mk("cmd/x/main.go", "package main\n\nfunc main() {}\n")
+	_, edges, err := scan(dir)
+	if err != nil {
+		t.Fatalf("scan: %v", err)
+	}
+	if len(edges) != 0 {
+		t.Fatalf("test-only imports produced dependency edges: %+v", edges)
+	}
+}
+
 func TestScanFlagsOversizedFunction(t *testing.T) {
 	dir := t.TempDir()
 	src := "package p\n\nfunc long() {\n" + strings.Repeat("\t_ = 1\n", 85) + "}\n"

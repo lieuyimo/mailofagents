@@ -59,6 +59,9 @@ jobs:
       - name: Test
         run: go test -count=1 ./...
 
+      - name: Race (gateway + httpclient)
+        run: go test -race -count=1 ./internal/gateway ./internal/httpclient
+
       - name: Frontend structure gates
         run: |
           bash scripts/audit_frontend_imports.sh

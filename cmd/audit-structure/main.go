@@ -126,10 +126,14 @@ func scan(root string) ([]entry, []depEdge, error) {
 		if err != nil {
 			return fmt.Errorf("%s: %w", rel, err)
 		}
-		if !strings.HasSuffix(path, "_test.go") {
-			entries = append(entries, fileEntry(rel, src)...)
-			entries = append(entries, funcEntries(fset, rel, code)...)
+		// Test files are exempt from the size budget and from the production
+		// layering map: integration tests legitimately import several
+		// internal packages (e.g. gateway tests driving a real server).
+		if strings.HasSuffix(path, "_test.go") {
+			return nil
 		}
+		entries = append(entries, fileEntry(rel, src)...)
+		entries = append(entries, funcEntries(fset, rel, code)...)
 		for e := range packageEdges(rel, code) {
 			edges[e] = true
 		}
